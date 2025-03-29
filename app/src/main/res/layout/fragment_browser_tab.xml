@@ -43,6 +43,9 @@
                         android:textSize="17sp"
                         android:cursorVisible="true"
                         android:layout_weight="1"
+                        android:maxLines="1"
+                        android:singleLine="true"
+                        android:imeOptions="actionGo"
                         android:background="@null"
                         android:hint="Search or type a URL"/>
 
@@ -58,10 +61,13 @@
 
 
         <ImageView
-            android:layout_width="25dp"
-            android:layout_height="18dp"
-            android:layout_marginHorizontal="10dp"
+            android:id="@+id/toolbar_menu_icon"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:layout_marginHorizontal="3dp"
+            android:paddingHorizontal="10dp"
             android:src="@drawable/menu_dots_vertical_24"/>
+
     </LinearLayout>
 
     <com.google.android.material.progressindicator.LinearProgressIndicator

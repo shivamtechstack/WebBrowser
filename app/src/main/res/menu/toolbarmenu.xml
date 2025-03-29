@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <group android:id="@+id/toolbar_tabGroup">
+
+    <item android:id="@+id/toolbar_newTab"
+        android:icon="@drawable/plus_24"
+      android:title="New tab" />
+
+    <item android:id="@+id/toolbar_newPrivateTab"
+        android:icon="@drawable/crossed_eye_24"
+        android:title="New private tab" />
+    </group>
+
+    <group android:id="@+id/toolbar_historyGroup">
+
+    <item android:id="@+id/toolbar_history"
+        android:icon="@drawable/history_24"
+        android:title="History" />
+
+    <item android:id="@+id/toolbar_downloads"
+        android:icon="@drawable/download_24"
+        android:title="Downloads" />
+
+    <item android:id="@+id/toolbar_bookmarks"
+        android:icon="@drawable/bookmark_empty_24"
+        android:title="Bookmarks" />
+
+    </group>
+
+    <group android:id="@+id/toolbar_settingsGroup">
+
+    <item android:id="@+id/toolbar_settings"
+        android:icon="@drawable/settings_24"
+        android:title="Settings" />
+
+    </group>
+
+</menu>
