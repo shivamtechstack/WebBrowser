@@ -65,26 +65,49 @@ class BrowserTabFragment : Fragment() {
 
         tabDao = TabDatabase.getDatabase(requireContext()).tabDataDao()
 
+//        CoroutineScope(Dispatchers.IO).launch {
+//            val activeTab = tabDao.getActiveTab()
+//            requireActivity().runOnUiThread {
+//                if (activeTab != null) {
+//                    loadUrl(activeTab.url)
+//                } else {
+//                    webView.visibility = View.GONE
+//                    binding.homePageLayout.visibility = View.VISIBLE
+//                }
+//            }
+//        }
+//
+//        if (!url.isNullOrBlank()) {
+//            binding.homePageLayout.visibility = View.GONE
+//            webView.visibility = View.VISIBLE
+//            loadUrl(url)
+//        }else{
+//            webView.visibility = View.GONE
+//            binding.homePageLayout.visibility = View.VISIBLE
+//        }
+
         CoroutineScope(Dispatchers.IO).launch {
             val activeTab = tabDao.getActiveTab()
             requireActivity().runOnUiThread {
-                if (activeTab != null) {
+                if (!url.isNullOrBlank()) {
+                    // ✅ If a URL is provided (restoring tab), show WebView
+                    webView.visibility = View.VISIBLE
+                    binding.homePageLayout.visibility = View.GONE
+                    loadUrl(url)
+                } else if (activeTab != null) {
+                    // ✅ Restore last active tab from DB
+                    webView.visibility = View.VISIBLE
+                    binding.homePageLayout.visibility = View.GONE
                     loadUrl(activeTab.url)
-                } else {
+                }else{
+                    // ❌ No active tab, show home page
                     webView.visibility = View.GONE
                     binding.homePageLayout.visibility = View.VISIBLE
                 }
             }
         }
 
-        if (!url.isNullOrBlank()) {
-            binding.homePageLayout.visibility = View.GONE
-            webView.visibility = View.VISIBLE
-            loadUrl(url)
-        }else{
-            webView.visibility = View.GONE
-            binding.homePageLayout.visibility = View.VISIBLE
-        }
+
 
         setUpBottomNavigation()
 
@@ -115,11 +138,14 @@ class BrowserTabFragment : Fragment() {
     }
 
     private fun loadUrl(query: String) {
+        if (query.isBlank()) return
+
         val url = if (Patterns.WEB_URL.matcher(query).matches()) {
             if (!query.startsWith("http")) "https://$query" else query
         } else {
             "https://www.google.com/search?q=" + URLEncoder.encode(query, "UTF-8")
         }
+
         binding.homePageLayout.visibility = View.GONE
         webView.visibility = View.VISIBLE
         webView.loadUrl(url)
@@ -140,7 +166,6 @@ class BrowserTabFragment : Fragment() {
                 )
             }
         }
-
     }
 
     private fun hideKeyboard(view: View) {
@@ -171,9 +196,13 @@ class BrowserTabFragment : Fragment() {
             }
 
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
+                if (url.isNullOrBlank()) return
+
                 binding.progressBar.visibility = View.VISIBLE
                 webView.visibility = View.VISIBLE
+
                 binding.searchTextEditText.setText(url)
+
                 CoroutineScope(Dispatchers.IO).launch {
                     tabDao.updateTabData(TabData(url = url.toString(), title = "New Tab", favicon = " ", isActive = true))
                 }
