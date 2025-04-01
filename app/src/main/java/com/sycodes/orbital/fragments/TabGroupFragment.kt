@@ -14,6 +14,7 @@ import com.sycodes.orbital.models.TabDatabase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class TabGroupFragment : Fragment() {
     private lateinit var binding: FragmentTabGroupBinding
@@ -37,15 +38,23 @@ class TabGroupFragment : Fragment() {
             val tabGroupDao = TabDatabase.getDatabase(requireContext()).tabDataDao()
             val tabs = tabGroupDao.getAllTabs()
             requireActivity().runOnUiThread {
-                binding.tabGroupRecyclerView.adapter = TabGroupAdapter(tabs, onTabClickListener = {
-                    val fragment = BrowserTabFragment.newInstance(it.url)
-                    parentFragmentManager.beginTransaction()
-                        .replace(R.id.main_Fragment_Container,fragment)
-                        .commit()
+                binding.tabGroupRecyclerView.adapter = TabGroupAdapter(tabs, onTabClickListener = { selectedTab ->
+                    CoroutineScope(Dispatchers.IO).launch {
+                        TabDatabase.getDatabase(requireActivity()).tabDataDao().deactivateAllTabs()
+                        TabDatabase.getDatabase(requireActivity()).tabDataDao().updateTabData(selectedTab.copy(isActive = true))
+
+                        withContext(Dispatchers.Main) {
+                            val fragment = BrowserTabFragment.newInstance(selectedTab.url, selectedTab.id)
+                            parentFragmentManager.beginTransaction()
+                                .replace(R.id.main_Fragment_Container, fragment)
+                                .addToBackStack(null)
+                                .commit()
+                        }
+                    }
                 },
-                    onTabCloseListener = {
+                    onTabCloseListener = { tabToClose ->
                         CoroutineScope(Dispatchers.IO).launch {
-                            tabGroupDao.deleteTab(it.id)
+                           TabDatabase.getDatabase(requireActivity()).tabDataDao().deleteTab(tabToClose.id)
                         }
                     })
                 }

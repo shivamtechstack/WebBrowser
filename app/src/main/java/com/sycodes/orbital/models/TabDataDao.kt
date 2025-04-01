@@ -2,14 +2,15 @@ package com.sycodes.orbital.models
 
 import androidx.room.Dao
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 
 @Dao
 interface TabDataDao {
 
-    @Insert
-    suspend fun insertTabData(tabData: TabData)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertTabData(tabData: TabData): Long
 
     @Update
     suspend fun updateTabData(tabData: TabData)
@@ -34,5 +35,4 @@ interface TabDataDao {
 
     @Query("UPDATE tabsData SET isActive = 0")
     suspend fun deactivateAllTabs()
-
 }

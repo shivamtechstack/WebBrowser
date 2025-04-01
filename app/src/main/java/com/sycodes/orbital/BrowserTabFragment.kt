@@ -17,32 +17,36 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.ProgressBar
-import android.widget.Toast
 import androidx.appcompat.widget.PopupMenu
 import com.sycodes.orbital.databinding.FragmentBrowserTabBinding
 import com.sycodes.orbital.fragments.TabGroupFragment
 import com.sycodes.orbital.models.TabData
-import com.sycodes.orbital.models.TabDataDao
 import com.sycodes.orbital.models.TabDatabase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.net.URLEncoder
 
 class BrowserTabFragment : Fragment() {
     private lateinit var binding: FragmentBrowserTabBinding
     private lateinit var webView: WebView
     private lateinit var progressBar: ProgressBar
-    private lateinit var tabDao: TabDataDao
+    private var tabId: Int = -1
+    private val tabDatabase by lazy { TabDatabase.getDatabase(requireContext())}
+    private var webViewBundle: Bundle? = null
 
     companion object {
         private const val ARG_URL = "url"
-        fun newInstance(url: String): BrowserTabFragment {
-            val fragment = BrowserTabFragment()
-            val args = Bundle()
-            args.putString(ARG_URL, url)
-            fragment.arguments = args
-            return fragment
+        private const val ARG_TAB_ID = "tab_id"
+
+        fun newInstance(url: String, tabId: Int = -1): BrowserTabFragment {
+            return BrowserTabFragment().apply {
+                arguments = Bundle().apply {
+                    putString(ARG_URL, url)
+                    putInt(ARG_TAB_ID, tabId)
+                }
+            }
         }
     }
 
@@ -59,60 +63,24 @@ class BrowserTabFragment : Fragment() {
 
         webView = binding.webView
         progressBar = binding.progressBar
-        val url = arguments?.getString(ARG_URL)
 
         setupWebView()
 
-        tabDao = TabDatabase.getDatabase(requireContext()).tabDataDao()
+        arguments?.let {
+            tabId = it.getInt(ARG_TAB_ID, -1)
+            val url = it.getString(ARG_URL, "")
 
-//        CoroutineScope(Dispatchers.IO).launch {
-//            val activeTab = tabDao.getActiveTab()
-//            requireActivity().runOnUiThread {
-//                if (activeTab != null) {
-//                    loadUrl(activeTab.url)
-//                } else {
-//                    webView.visibility = View.GONE
-//                    binding.homePageLayout.visibility = View.VISIBLE
-//                }
-//            }
-//        }
-//
-//        if (!url.isNullOrBlank()) {
-//            binding.homePageLayout.visibility = View.GONE
-//            webView.visibility = View.VISIBLE
-//            loadUrl(url)
-//        }else{
-//            webView.visibility = View.GONE
-//            binding.homePageLayout.visibility = View.VISIBLE
-//        }
-
-        CoroutineScope(Dispatchers.IO).launch {
-            val activeTab = tabDao.getActiveTab()
-            requireActivity().runOnUiThread {
-                if (!url.isNullOrBlank()) {
-                    // ✅ If a URL is provided (restoring tab), show WebView
-                    webView.visibility = View.VISIBLE
-                    binding.homePageLayout.visibility = View.GONE
-                    loadUrl(url)
-                } else if (activeTab != null) {
-                    // ✅ Restore last active tab from DB
-                    webView.visibility = View.VISIBLE
-                    binding.homePageLayout.visibility = View.GONE
-                    loadUrl(activeTab.url)
-                }else{
-                    // ❌ No active tab, show home page
-                    webView.visibility = View.GONE
-                    binding.homePageLayout.visibility = View.VISIBLE
-                }
+            if (url.isNotEmpty()) {
+                webView.loadUrl(url)
+                binding.homePageLayout.visibility = View.GONE
+                webView.visibility = View.VISIBLE
             }
         }
-
-
 
         setUpBottomNavigation()
 
         binding.toolbarMenuIcon.setOnClickListener { view ->
-           showPopupMenu(view)
+            showPopupMenu(view)
         }
 
         binding.searchTextEditText.setOnEditorActionListener { v, actionId, event ->
@@ -124,7 +92,6 @@ class BrowserTabFragment : Fragment() {
                 false
             }
         }
-
         return binding.root
     }
 
@@ -134,7 +101,6 @@ class BrowserTabFragment : Fragment() {
 
         popupMenu.setForceShowIcon(true)
         popupMenu.show()
-
     }
 
     private fun loadUrl(query: String) {
@@ -145,34 +111,17 @@ class BrowserTabFragment : Fragment() {
         } else {
             "https://www.google.com/search?q=" + URLEncoder.encode(query, "UTF-8")
         }
-
         binding.homePageLayout.visibility = View.GONE
         webView.visibility = View.VISIBLE
         webView.loadUrl(url)
 
-
-        CoroutineScope(Dispatchers.IO).launch {
-            tabDao.deactivateAllTabs()
-
-            val existingTab = arguments?.getString(ARG_URL)
-
-            if (existingTab.isNullOrBlank()) {
-                tabDao.insertTabData(
-                    TabData(url = url, title = "New Tab", favicon = " ", isActive = true)
-                )
-            } else {
-                tabDao.updateTabData(
-                    TabData(url = url, title = "Updated Tab", favicon = " ", isActive = true)
-                )
-            }
-        }
     }
 
     private fun hideKeyboard(view: View) {
-        val imm = requireContext().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        val imm =
+            requireContext().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
         imm.hideSoftInputFromWindow(view.windowToken, 0)
     }
-
 
     @SuppressLint("SetJavaScriptEnabled")
     private fun setupWebView() {
@@ -190,7 +139,10 @@ class BrowserTabFragment : Fragment() {
         webSettings.javaScriptCanOpenWindowsAutomatically = true
 
         webView.webViewClient = object : WebViewClient() {
-            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+            override fun shouldOverrideUrlLoading(
+                view: WebView?,
+                request: WebResourceRequest?
+            ): Boolean {
                 request?.url?.let { view?.loadUrl(it.toString()) }
                 return false
             }
@@ -202,15 +154,23 @@ class BrowserTabFragment : Fragment() {
                 webView.visibility = View.VISIBLE
 
                 binding.searchTextEditText.setText(url)
-
-                CoroutineScope(Dispatchers.IO).launch {
-                    tabDao.updateTabData(TabData(url = url.toString(), title = "New Tab", favicon = " ", isActive = true))
-                }
             }
 
             override fun onPageFinished(view: WebView?, url: String?) {
                 binding.progressBar.visibility = View.GONE
 
+                if (url != null) {
+                    saveTabData(url)
+                }
+
+            }
+        }
+
+        if (webViewBundle != null) {
+            webView.restoreState(webViewBundle!!)
+        } else {
+            arguments?.getString(ARG_URL)?.let { url ->
+                if (url.isNotEmpty()) webView.loadUrl(url)
             }
         }
 
@@ -223,23 +183,41 @@ class BrowserTabFragment : Fragment() {
         }
     }
 
-    private fun setUpBottomNavigation(){
-        binding.newTabButtonMainActivity.setOnClickListener {
-            val currentUrl = webView.url
-            if (currentUrl == null ){
-                Toast.makeText(requireContext(),"New Tab", Toast.LENGTH_SHORT).show()
-            }else{
-                val fragment = BrowserTabFragment.newInstance("")
+    private fun saveTabData(url: String) {
+        CoroutineScope(Dispatchers.IO).launch {
+            if (tabId == -1) {
 
-                CoroutineScope(Dispatchers.IO).launch {
-                    val tabData = TabData(url = currentUrl, title = "New Tab", favicon = " ", isActive = false)
-                    tabDao.insertTabData(tabData)
+                val newTab = TabData(url = url, isActive = true)
+                tabId = tabDatabase.tabDataDao().insertTabData(newTab).toInt()
+            } else {
+
+                val tab = tabDatabase.tabDataDao().getTab(tabId)
+                tab?.let {
+                    val updatedTab = it.copy(
+                        url = url,
+                        lastVisited = System.currentTimeMillis(),
+                        isActive = true
+                    )
+                    tabDatabase.tabDataDao().updateTabData(updatedTab)
                 }
-                parentFragmentManager.beginTransaction().replace(R.id.main_Fragment_Container,fragment)
-                    .addToBackStack(null)
-                    .commit()
+            }
+        }
+    }
 
+    private fun setUpBottomNavigation() {
+        binding.newTabButtonMainActivity.setOnClickListener {
+            CoroutineScope(Dispatchers.IO).launch {
+                tabDatabase.tabDataDao().deactivateAllTabs()
+                val newTab = TabData(url = "", isActive = true)
+                val newTabId = tabDatabase.tabDataDao().insertTabData(newTab).toInt()
 
+                withContext(Dispatchers.Main) {
+                    val fragment = BrowserTabFragment.newInstance("", newTabId)
+                    parentFragmentManager.beginTransaction()
+                        .replace(R.id.main_Fragment_Container, fragment)
+                        .addToBackStack(null)
+                        .commit()
+                }
             }
         }
 
@@ -247,14 +225,31 @@ class BrowserTabFragment : Fragment() {
             val fragment = TabGroupFragment()
             parentFragmentManager.beginTransaction()
                 .hide(this)
-                .add(R.id.main_Fragment_Container,fragment)
+                .add(R.id.main_Fragment_Container, fragment)
                 .addToBackStack(null).commit()
+        }
+        binding.webViewGoBack.setOnClickListener {
+            if (webView.canGoBack()) {
+                webView.goBack()
+            }
+        }
+        binding.webViewGoForward.setOnClickListener {
+            if (webView.canGoForward()) {
+                webView.goForward()
+            }
         }
     }
 
-    fun canGoBack(): Boolean = webView.canGoBack()
-    fun goBack() = webView.goBack()
-    fun canGoForward(): Boolean = webView.canGoForward()
-    fun goForward() = webView.goForward()
+    override fun onResume() {
+        super.onResume()
+        if (webViewBundle != null) {
+            webView.restoreState(webViewBundle!!)
+        }
+    }
 
+    override fun onPause() {
+        super.onPause()
+        webViewBundle = Bundle()
+        webView.saveState(webViewBundle!!)
+    }
 }
