@@ -17,11 +17,15 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.ProgressBar
+import android.widget.Toast
 import androidx.appcompat.widget.PopupMenu
+import androidx.lifecycle.Observer
+import androidx.lifecycle.ViewModelProvider
 import com.sycodes.orbital.databinding.FragmentBrowserTabBinding
 import com.sycodes.orbital.fragments.TabGroupFragment
 import com.sycodes.orbital.models.TabData
 import com.sycodes.orbital.models.TabDatabase
+import com.sycodes.orbital.utilities.WebDataExtractor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -34,7 +38,6 @@ class BrowserTabFragment : Fragment() {
     private lateinit var progressBar: ProgressBar
     private var tabId: Int = -1
     private val tabDatabase by lazy { TabDatabase.getDatabase(requireContext())}
-    private var webViewBundle: Bundle? = null
 
     companion object {
         private const val ARG_URL = "url"
@@ -152,25 +155,19 @@ class BrowserTabFragment : Fragment() {
 
                 binding.progressBar.visibility = View.VISIBLE
                 webView.visibility = View.VISIBLE
-
                 binding.searchTextEditText.setText(url)
+
             }
 
             override fun onPageFinished(view: WebView?, url: String?) {
                 binding.progressBar.visibility = View.GONE
 
                 if (url != null) {
-                    saveTabData(url)
+
+                        val webData = WebDataExtractor.extractWebData(webView, requireContext(), tabId)
+                        saveTabData(url, webData.title, webData.faviconPath, webData.previewPath)
+
                 }
-
-            }
-        }
-
-        if (webViewBundle != null) {
-            webView.restoreState(webViewBundle!!)
-        } else {
-            arguments?.getString(ARG_URL)?.let { url ->
-                if (url.isNotEmpty()) webView.loadUrl(url)
             }
         }
 
@@ -183,18 +180,19 @@ class BrowserTabFragment : Fragment() {
         }
     }
 
-    private fun saveTabData(url: String) {
+    private fun saveTabData(url: String, title: String, faviconPath: String, previewPath: String) {
         CoroutineScope(Dispatchers.IO).launch {
             if (tabId == -1) {
-
-                val newTab = TabData(url = url, isActive = true)
+                val newTab = TabData(url = url, title = title, favicon = faviconPath, urlPreview = previewPath, isActive = true)
                 tabId = tabDatabase.tabDataDao().insertTabData(newTab).toInt()
             } else {
-
                 val tab = tabDatabase.tabDataDao().getTab(tabId)
                 tab?.let {
                     val updatedTab = it.copy(
                         url = url,
+                        title = title,
+                        favicon = faviconPath,
+                        urlPreview = previewPath,
                         lastVisited = System.currentTimeMillis(),
                         isActive = true
                     )
@@ -228,28 +226,18 @@ class BrowserTabFragment : Fragment() {
                 .add(R.id.main_Fragment_Container, fragment)
                 .addToBackStack(null).commit()
         }
+
         binding.webViewGoBack.setOnClickListener {
-            if (webView.canGoBack()) {
-                webView.goBack()
-            }
+
         }
-        binding.webViewGoForward.setOnClickListener {
-            if (webView.canGoForward()) {
-                webView.goForward()
-            }
-        }
+
     }
 
     override fun onResume() {
         super.onResume()
-        if (webViewBundle != null) {
-            webView.restoreState(webViewBundle!!)
-        }
     }
 
     override fun onPause() {
         super.onPause()
-        webViewBundle = Bundle()
-        webView.saveState(webViewBundle!!)
     }
 }

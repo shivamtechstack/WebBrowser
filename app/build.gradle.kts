@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.sycodes.orbital"
-    compileSdk = 36
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.sycodes.orbital"
@@ -59,6 +59,7 @@ dependencies {
 
 
     implementation ("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7")
+    //implementation ("androidx.activity:activity-ktx:1.10.1")
 
 
 }
