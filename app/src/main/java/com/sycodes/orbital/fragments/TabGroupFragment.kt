@@ -5,6 +5,7 @@ import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.GridLayoutManager
 import com.sycodes.orbital.BrowserTabFragment
 import com.sycodes.orbital.R
@@ -33,6 +34,11 @@ class TabGroupFragment : Fragment() {
         var recyclerView = binding.tabGroupRecyclerView
         recyclerView.setHasFixedSize(true)
         recyclerView.layoutManager = GridLayoutManager(requireContext(),2)
+        binding.tabGroupToolBar.navigationIcon = ContextCompat.getDrawable(requireContext(), R.drawable.arrow_smallleft_24)
+        binding.tabGroupToolBar.setNavigationOnClickListener {
+            requireActivity().onBackPressedDispatcher.onBackPressed()
+        }
+
 
         CoroutineScope(Dispatchers.IO).launch {
             val tabGroupDao = TabDatabase.getDatabase(requireContext()).tabDataDao()
