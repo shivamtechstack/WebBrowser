@@ -1,48 +1,91 @@
 package com.sycodes.orbital
 
 import android.os.Bundle
+import android.view.View
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.lifecycle.Observer
-import androidx.lifecycle.ViewModelProvider
+import com.sycodes.orbital.adapters.TabPagerAdapter
 import com.sycodes.orbital.databinding.ActivityMainBinding
+import com.sycodes.orbital.fragments.TabGroupFragment
 import com.sycodes.orbital.models.TabData
 import com.sycodes.orbital.models.TabDatabase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlin.jvm.java
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
+    private lateinit var tabAdapter: TabPagerAdapter
+    private lateinit var tabDatabase: TabDatabase
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
-            insets
-        }
 
+        tabDatabase = TabDatabase.getDatabase(this)
+        tabAdapter = TabPagerAdapter(this)
+        binding.viewPager.adapter = tabAdapter
+        binding.viewPager.isUserInputEnabled = false
+
+        loadActiveTab()
+    }
+
+    fun loadActiveTab() {
         CoroutineScope(Dispatchers.IO).launch {
-            val activeTab = TabDatabase.getDatabase(this@MainActivity).tabDataDao().getActiveTab()
+            val activeTab = tabDatabase.tabDataDao().getActiveTab()
             withContext(Dispatchers.Main) {
-                val fragment = if (activeTab != null) {
-                    BrowserTabFragment.newInstance(activeTab.url, activeTab.id)
+                if (activeTab != null) {
+                    tabAdapter.addTab(activeTab)
                 } else {
-                    BrowserTabFragment.newInstance("")
+                    addNewTab()
                 }
-                supportFragmentManager.beginTransaction()
-                    .replace(R.id.main_Fragment_Container, fragment)
-                    .commit()
             }
         }
+    }
 
+    fun addNewTab(url: String? = null) {
+        CoroutineScope(Dispatchers.IO).launch {
+            tabDatabase.tabDataDao().deactivateAllTabs()
+            val newTab = TabData(url = url ?: "", isActive = true)
+            val newTabId = tabDatabase.tabDataDao().insertTabData(newTab).toInt()
+
+            withContext(Dispatchers.Main) {
+                val newTabData = TabData(url = url ?: "", id = newTabId, isActive = true)
+                tabAdapter.addTab(newTabData)
+                CoroutineScope(Dispatchers.Main).launch {
+                    switchToTab(newTabId)
+                }
+            }
+        }
+    }
+
+    fun switchToTab(tabId: Int) {
+        CoroutineScope(Dispatchers.IO).launch {
+            val activeTabs = tabDatabase.tabDataDao().getAllTabs()
+            withContext(Dispatchers.Main) {
+                tabAdapter.updateTabs(activeTabs)
+                val newPosition = tabAdapter.getTabPosition(tabId)
+                if (newPosition >= 0) {
+                    binding.viewPager.setCurrentItem(newPosition, false)
+                }
+            }
+        }
+    }
+
+    fun openTabGroup() {
+        binding.viewPager.visibility = View.GONE
+        binding.mainFragmentContainer.visibility = View.VISIBLE
+
+        supportFragmentManager.beginTransaction()
+            .replace(R.id.main_fragment_container, TabGroupFragment())
+            .addToBackStack("TabGroup")
+            .commit()
+    }
+    fun closeTabGroup() {
+        binding.viewPager.visibility = View.VISIBLE
+        binding.mainFragmentContainer.visibility = View.GONE
     }
 }

@@ -5,9 +5,11 @@ import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.activity.OnBackPressedCallback
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.GridLayoutManager
 import com.sycodes.orbital.BrowserTabFragment
+import com.sycodes.orbital.MainActivity
 import com.sycodes.orbital.R
 import com.sycodes.orbital.adapters.TabGroupAdapter
 import com.sycodes.orbital.databinding.FragmentTabGroupBinding
@@ -19,9 +21,16 @@ import kotlinx.coroutines.withContext
 
 class TabGroupFragment : Fragment() {
     private lateinit var binding: FragmentTabGroupBinding
+    private lateinit var tabDatabase: TabDatabase
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        requireActivity().onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                (requireActivity() as? MainActivity)?.closeTabGroup()
+            }
+        })
 
     }
 
@@ -30,15 +39,17 @@ class TabGroupFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View? {
         binding = FragmentTabGroupBinding.inflate(inflater,container,false)
+        tabDatabase = TabDatabase.getDatabase(requireContext())
 
         var recyclerView = binding.tabGroupRecyclerView
         recyclerView.setHasFixedSize(true)
         recyclerView.layoutManager = GridLayoutManager(requireContext(),2)
+
         binding.tabGroupToolBar.navigationIcon = ContextCompat.getDrawable(requireContext(), R.drawable.arrow_smallleft_24)
         binding.tabGroupToolBar.setNavigationOnClickListener {
+            (requireActivity() as? MainActivity)?.closeTabGroup()
             requireActivity().onBackPressedDispatcher.onBackPressed()
         }
-
 
         CoroutineScope(Dispatchers.IO).launch {
             val tabGroupDao = TabDatabase.getDatabase(requireContext()).tabDataDao()
@@ -46,24 +57,30 @@ class TabGroupFragment : Fragment() {
             requireActivity().runOnUiThread {
                 binding.tabGroupRecyclerView.adapter = TabGroupAdapter(tabs, onTabClickListener = { selectedTab ->
                     CoroutineScope(Dispatchers.IO).launch {
-                        TabDatabase.getDatabase(requireActivity()).tabDataDao().deactivateAllTabs()
-                        TabDatabase.getDatabase(requireActivity()).tabDataDao().updateTabData(selectedTab.copy(isActive = true))
+                        tabDatabase.tabDataDao().deactivateAllTabs()
+                        tabDatabase.tabDataDao().updateTabData(selectedTab.copy(isActive = true))
 
                         withContext(Dispatchers.Main) {
-                            val fragment = BrowserTabFragment.newInstance(selectedTab.url, selectedTab.id)
-                            parentFragmentManager.beginTransaction()
-                                .replace(R.id.main_Fragment_Container, fragment)
-                                .addToBackStack(null)
-                                .commit()
+                            activity?.let { safeActivity ->
+                                (safeActivity as? MainActivity)?.apply {
+                                    loadActiveTab()
+                                    switchToTab(selectedTab.id)
+                                    closeTabGroup()
+                                }
+                            }
                         }
                     }
                 },
                     onTabCloseListener = { tabToClose ->
                         CoroutineScope(Dispatchers.IO).launch {
-                           TabDatabase.getDatabase(requireActivity()).tabDataDao().deleteTab(tabToClose.id)
+                            tabDatabase.tabDataDao().deleteTab(tabToClose.id)
+                            val updatedTabs = tabDatabase.tabDataDao().getAllTabs()
+                            withContext(Dispatchers.Main) {
+                                (binding.tabGroupRecyclerView.adapter as? TabGroupAdapter)?.updateTabs(updatedTabs)
+                            }
                         }
                     })
-                }
+            }
             }
 
         return binding.root

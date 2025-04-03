@@ -13,5 +13,7 @@ data class TabData(
     val favicon: String = "",
     val isActive: Boolean = false,
     val isPinned: Boolean = false,
-    val lastVisited: Long = System.currentTimeMillis()
+    val lastVisited: Long = System.currentTimeMillis(),
+    val historyIndex: Int = 0,
+    val historyUrls: String = ""
 )

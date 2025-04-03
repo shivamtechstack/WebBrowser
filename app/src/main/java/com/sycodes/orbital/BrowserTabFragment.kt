@@ -146,11 +146,19 @@ class BrowserTabFragment : Fragment() {
                 view: WebView?,
                 request: WebResourceRequest?
             ): Boolean {
-                request?.url?.let { view?.loadUrl(it.toString()) }
+                val url = request?.url.toString()
+
+                if (request?.isForMainFrame == false) {
+                    (activity as MainActivity).addNewTab(url)
+                    return true
+                }
+
+                view?.loadUrl(url)
                 return false
             }
 
-            override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
+
+        override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                 if (url.isNullOrBlank()) return
 
                 binding.progressBar.visibility = View.VISIBLE
@@ -204,27 +212,11 @@ class BrowserTabFragment : Fragment() {
 
     private fun setUpBottomNavigation() {
         binding.newTabButtonMainActivity.setOnClickListener {
-            CoroutineScope(Dispatchers.IO).launch {
-                tabDatabase.tabDataDao().deactivateAllTabs()
-                val newTab = TabData(url = "", isActive = true)
-                val newTabId = tabDatabase.tabDataDao().insertTabData(newTab).toInt()
-
-                withContext(Dispatchers.Main) {
-                    val fragment = BrowserTabFragment.newInstance("", newTabId)
-                    parentFragmentManager.beginTransaction()
-                        .replace(R.id.main_Fragment_Container, fragment)
-                        .addToBackStack(null)
-                        .commit()
-                }
-            }
+            (activity as? MainActivity)?.addNewTab()
         }
 
         binding.tabGroupButton.setOnClickListener {
-            val fragment = TabGroupFragment()
-            parentFragmentManager.beginTransaction()
-                .hide(this)
-                .add(R.id.main_Fragment_Container, fragment)
-                .addToBackStack(null).commit()
+            (activity as? MainActivity)?.openTabGroup()
         }
 
         binding.webViewGoBack.setOnClickListener {
