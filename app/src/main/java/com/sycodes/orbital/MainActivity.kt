@@ -4,11 +4,14 @@ import android.os.Bundle
 import android.view.View
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.getSystemService
+import androidx.lifecycle.ViewModelProvider
 import com.sycodes.orbital.adapters.TabPagerAdapter
 import com.sycodes.orbital.databinding.ActivityMainBinding
 import com.sycodes.orbital.fragments.TabGroupFragment
 import com.sycodes.orbital.models.TabData
 import com.sycodes.orbital.models.TabDatabase
+import com.sycodes.orbital.viewModels.MainViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -18,19 +21,32 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var tabAdapter: TabPagerAdapter
     private lateinit var tabDatabase: TabDatabase
+    private lateinit var viewModel: MainViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
+        viewModel = ViewModelProvider(this)[MainViewModel::class.java]
         tabDatabase = TabDatabase.getDatabase(this)
         tabAdapter = TabPagerAdapter(this)
         binding.viewPager.adapter = tabAdapter
         binding.viewPager.isUserInputEnabled = false
 
         loadActiveTab()
+
+        viewModel.allTabs.observe(this) { tabs ->
+            if (tabs.isEmpty()) {
+                addNewTab()
+            } else {
+                tabAdapter.updateTabs(tabs)
+                val lastActiveTab = tabs.find { it.isActive }
+                lastActiveTab?.let {
+                    switchToTab(it.id)
+                }
+            }
+        }
     }
 
     fun loadActiveTab() {
@@ -49,7 +65,7 @@ class MainActivity : AppCompatActivity() {
     fun addNewTab(url: String? = null) {
         CoroutineScope(Dispatchers.IO).launch {
             tabDatabase.tabDataDao().deactivateAllTabs()
-            val newTab = TabData(url = url ?: "", isActive = true)
+            val newTab = TabData(url = url ?: "", title = "New Tab", lastVisited = System.currentTimeMillis(), isActive = true)
             val newTabId = tabDatabase.tabDataDao().insertTabData(newTab).toInt()
 
             withContext(Dispatchers.Main) {

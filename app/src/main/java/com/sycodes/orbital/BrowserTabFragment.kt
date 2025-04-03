@@ -171,10 +171,10 @@ class BrowserTabFragment : Fragment() {
                 binding.progressBar.visibility = View.GONE
 
                 if (url != null) {
-
+                    if (isAdded && context != null) {
                         val webData = WebDataExtractor.extractWebData(webView, requireContext(), tabId)
                         saveTabData(url, webData.title, webData.faviconPath, webData.previewPath)
-
+                    }
                 }
             }
         }

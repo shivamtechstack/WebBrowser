@@ -31,7 +31,6 @@ class TabGroupFragment : Fragment() {
                 (requireActivity() as? MainActivity)?.closeTabGroup()
             }
         })
-
     }
 
     override fun onCreateView(

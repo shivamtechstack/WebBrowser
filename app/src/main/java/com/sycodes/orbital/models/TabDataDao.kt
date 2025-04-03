@@ -1,5 +1,6 @@
 package com.sycodes.orbital.models
 
+import androidx.lifecycle.LiveData
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
@@ -35,4 +36,7 @@ interface TabDataDao {
 
     @Query("UPDATE tabsData SET isActive = 0")
     suspend fun deactivateAllTabs()
+
+    @Query("SELECT * FROM tabsdata ORDER BY lastVisited DESC")
+    fun getAllTabsLive(): LiveData<List<TabData>>
 }
