@@ -190,7 +190,6 @@ class BrowserTabFragment : Fragment() {
 
                 if (url != null) {
 
-
                     if (isAdded && context != null) {
 
                         if (isNavigatingBack) {
