@@ -22,15 +22,18 @@ import kotlinx.coroutines.withContext
 class TabGroupFragment : Fragment() {
     private lateinit var binding: FragmentTabGroupBinding
     private lateinit var tabDatabase: TabDatabase
+    private lateinit var backPressedCallback: OnBackPressedCallback
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        requireActivity().onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+        backPressedCallback = object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                (requireActivity() as? MainActivity)?.closeTabGroup()
+                (activity as MainActivity).closeTabGroup()
             }
-        })
+        }
+
+        requireActivity().onBackPressedDispatcher.addCallback(this, backPressedCallback)
     }
 
     override fun onCreateView(
@@ -83,5 +86,15 @@ class TabGroupFragment : Fragment() {
             }
 
         return binding.root
+    }
+
+    override fun onResume() {
+        super.onResume()
+        backPressedCallback.isEnabled = true
+    }
+
+    override fun onPause() {
+        super.onPause()
+        backPressedCallback.isEnabled = false
     }
 }

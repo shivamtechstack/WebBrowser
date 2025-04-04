@@ -37,6 +37,14 @@ class TabPagerAdapter(activity: FragmentActivity) : FragmentStateAdapter(activit
     fun getTabPosition(tabId: Int): Int {
         return tabList.indexOfFirst { it.id == tabId }
     }
+
+    override fun getItemId(position: Int): Long {
+        return tabList[position].id.toLong()
+    }
+
+    override fun containsItem(itemId: Long): Boolean {
+        return tabList.any { it.id.toLong() == itemId }
+    }
 }
 
 

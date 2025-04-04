@@ -4,7 +4,6 @@ import android.os.Bundle
 import android.view.View
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.getSystemService
 import androidx.lifecycle.ViewModelProvider
 import com.sycodes.orbital.adapters.TabPagerAdapter
 import com.sycodes.orbital.databinding.ActivityMainBinding
@@ -34,7 +33,7 @@ class MainActivity : AppCompatActivity() {
         binding.viewPager.adapter = tabAdapter
         binding.viewPager.isUserInputEnabled = false
 
-        loadActiveTab()
+        //loadActiveTab()
 
         viewModel.allTabs.observe(this) { tabs ->
             if (tabs.isEmpty()) {
@@ -101,6 +100,7 @@ class MainActivity : AppCompatActivity() {
             .commit()
     }
     fun closeTabGroup() {
+        supportFragmentManager.popBackStack()
         binding.viewPager.visibility = View.VISIBLE
         binding.mainFragmentContainer.visibility = View.GONE
     }

@@ -18,6 +18,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.ProgressBar
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.widget.PopupMenu
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
@@ -28,8 +29,10 @@ import com.sycodes.orbital.models.TabDatabase
 import com.sycodes.orbital.utilities.WebDataExtractor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
 import java.net.URLEncoder
 
 class BrowserTabFragment : Fragment() {
@@ -38,6 +41,8 @@ class BrowserTabFragment : Fragment() {
     private lateinit var progressBar: ProgressBar
     private var tabId: Int = -1
     private val tabDatabase by lazy { TabDatabase.getDatabase(requireContext())}
+    private lateinit var backPressedCallback: OnBackPressedCallback
+    private var isNavigatingBack = false
 
     companion object {
         private const val ARG_URL = "url"
@@ -55,6 +60,14 @@ class BrowserTabFragment : Fragment() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        backPressedCallback = object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                navigateBack()
+            }
+        }
+
+        requireActivity().onBackPressedDispatcher.addCallback(this, backPressedCallback)
 
     }
 
@@ -75,8 +88,13 @@ class BrowserTabFragment : Fragment() {
 
             if (url.isNotEmpty()) {
                 webView.loadUrl(url)
+                binding.searchTextEditText.setText(url)
                 binding.homePageLayout.visibility = View.GONE
                 webView.visibility = View.VISIBLE
+            }else{
+                binding.searchTextEditText.setText("")
+                binding.homePageLayout.visibility = View.VISIBLE
+                webView.visibility = View.GONE
             }
         }
 
@@ -171,9 +189,18 @@ class BrowserTabFragment : Fragment() {
                 binding.progressBar.visibility = View.GONE
 
                 if (url != null) {
+
+
                     if (isAdded && context != null) {
+
+                        if (isNavigatingBack) {
+                            isNavigatingBack = false
+                            return
+                        }
+
                         val webData = WebDataExtractor.extractWebData(webView, requireContext(), tabId)
                         saveTabData(url, webData.title, webData.faviconPath, webData.previewPath)
+                        saveUrlToHistory(url)
                     }
                 }
             }
@@ -220,16 +247,87 @@ class BrowserTabFragment : Fragment() {
         }
 
         binding.webViewGoBack.setOnClickListener {
-
+            navigateBack()
         }
 
+    }
+    fun navigateBack(){
+        CoroutineScope(Dispatchers.IO).launch {
+            val tab = tabDatabase.tabDataDao().getTab(tabId)
+            tab?.let {
+                val historyList = it.historyUrls.toUrlList().toMutableList()
+                val currentIndex = it.historyIndex
+
+                if (currentIndex > 0) {
+                    historyList.removeAt(currentIndex)
+
+                    val newIndex = currentIndex - 1
+                    val urlToLoad = historyList[newIndex]
+
+                    val updatedTab = it.copy(
+                        historyUrls = historyList.toJsonString(),
+                        historyIndex = newIndex
+                    )
+                    tabDatabase.tabDataDao().updateTabData(updatedTab)
+
+                    isNavigatingBack = true
+
+                    withContext(Dispatchers.Main) {
+                        webView.loadUrl(urlToLoad)
+                    }
+                } else {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(requireContext(), "No more history", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
+    }
+
+    private fun saveUrlToHistory(url: String) {
+        CoroutineScope(Dispatchers.IO).launch {
+            val tab = tabDatabase.tabDataDao().getTab(tabId)
+            tab?.let {
+                val historyList = it.historyUrls.toUrlList()
+                val currentIndex = it.historyIndex
+
+                if (historyList.getOrNull(currentIndex) == url) return@launch
+
+                val newHistory = historyList.take(currentIndex + 1).toMutableList()
+                newHistory.add(url)
+
+                val updatedTab = it.copy(
+                    historyUrls = newHistory.toJsonString(),
+                    historyIndex = newHistory.size - 1
+                )
+                tabDatabase.tabDataDao().updateTabData(updatedTab)
+            }
+        }
+    }
+
+    fun String.toUrlList(): List<String> {
+        return try {
+            JSONArray(this).let { array ->
+                List(array.length()) { i -> array.getString(i) }
+            }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    fun List<String>.toJsonString(): String {
+        val array = JSONArray()
+        this.forEach { array.put(it) }
+        return array.toString()
     }
 
     override fun onResume() {
         super.onResume()
+        backPressedCallback.isEnabled = true
     }
 
     override fun onPause() {
         super.onPause()
+        backPressedCallback.isEnabled = false
     }
 }
