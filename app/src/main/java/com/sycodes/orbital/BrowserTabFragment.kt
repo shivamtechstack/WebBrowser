@@ -27,6 +27,7 @@ import com.sycodes.orbital.fragments.BookmarksFragment
 import com.sycodes.orbital.fragments.TabGroupFragment
 import com.sycodes.orbital.models.AppDatabase
 import com.sycodes.orbital.models.Bookmark
+import com.sycodes.orbital.models.History
 import com.sycodes.orbital.models.TabData
 import com.sycodes.orbital.models.TabDatabase
 import com.sycodes.orbital.utilities.WebDataExtractor
@@ -218,6 +219,7 @@ class BrowserTabFragment : Fragment() {
                         saveTabData(url, webData.title, webData.faviconPath, webData.previewPath)
                         saveUrlToHistory(url)
                         updateBookmarkIcon(url)
+                        saveHistory(url, webData.title, webData.faviconPath)
                     }
                 }
             }
@@ -264,6 +266,13 @@ class BrowserTabFragment : Fragment() {
                     tabDatabase.tabDataDao().updateTabData(updatedTab)
                 }
             }
+        }
+    }
+
+    fun saveHistory(url: String, title: String, faviconPath: String) {
+        CoroutineScope(Dispatchers.IO).launch {
+            val history = History(url = url, title = title, favicon = faviconPath)
+            AppDatabase.getAppDatabase(requireContext()).appDataDao().insertHistory(history)
         }
     }
 

@@ -47,7 +47,8 @@ class TabGroupFragment : Fragment() {
         recyclerView.setHasFixedSize(true)
         recyclerView.layoutManager = GridLayoutManager(requireContext(),2)
 
-        binding.tabGroupToolBar.navigationIcon = ContextCompat.getDrawable(requireContext(), R.drawable.arrow_smallleft_24)
+        binding.tabGroupToolBar.navigationIcon =
+            ContextCompat.getDrawable(requireContext(), R.drawable.arrow_smallleft_24)
         binding.tabGroupToolBar.setNavigationOnClickListener {
             (requireActivity() as? MainActivity)?.closeTabGroup()
             requireActivity().onBackPressedDispatcher.onBackPressed()
@@ -65,7 +66,7 @@ class TabGroupFragment : Fragment() {
                         withContext(Dispatchers.Main) {
                             activity?.let { safeActivity ->
                                 (safeActivity as? MainActivity)?.apply {
-                                    loadActiveTab()
+                                    //loadActiveTab()
                                     switchToTab(selectedTab.id)
                                     closeTabGroup()
                                 }

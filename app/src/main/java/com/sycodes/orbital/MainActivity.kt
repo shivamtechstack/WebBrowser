@@ -34,16 +34,39 @@ class MainActivity : AppCompatActivity() {
         binding.viewPager.adapter = tabAdapter
         binding.viewPager.isUserInputEnabled = false
 
-        //loadActiveTab()
+        loadInitialTab()
 
-        viewModel.allTabs.observe(this) { tabs ->
+//        viewModel.allTabs.observe(this) { tabs ->
+//            if (tabs.isEmpty()) {
+//                addNewTab()
+//            } else {
+//                tabAdapter.updateTabs(tabs)
+//                val lastActiveTab = tabs.find { it.isActive }
+//                lastActiveTab?.let {
+//                    switchToTab(it.id)
+//                }
+//            }
+//        }
+    }
+
+    fun loadInitialTab() {
+        CoroutineScope(Dispatchers.IO).launch {
+            val tabs = tabDatabase.tabDataDao().getAllTabs() // ✅ Fetch tabs from DB
+
             if (tabs.isEmpty()) {
-                addNewTab()
+                // No tabs yet, create a new one
+                withContext(Dispatchers.Main) {
+                    addNewTab()
+                }
             } else {
-                tabAdapter.updateTabs(tabs)
-                val lastActiveTab = tabs.find { it.isActive }
-                lastActiveTab?.let {
-                    switchToTab(it.id)
+                // Tabs exist — update adapter and switch to active
+                val activeTab = tabs.find { it.isActive }
+
+                withContext(Dispatchers.Main) {
+                    tabAdapter.updateTabs(tabs) // ✅ Set all tabs
+                    activeTab?.let {
+                        switchToTab(it.id) // ✅ Only switch if active tab exists
+                    }
                 }
             }
         }
@@ -105,5 +128,6 @@ class MainActivity : AppCompatActivity() {
         supportFragmentManager.popBackStack()
         binding.viewPager.visibility = View.VISIBLE
         binding.mainFragmentContainer.visibility = View.GONE
+        loadInitialTab()
     }
 }
