@@ -5,6 +5,7 @@ import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.activity.OnBackPressedCallback
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.sycodes.orbital.MainActivity
@@ -13,6 +14,7 @@ import com.sycodes.orbital.adapters.GroupedHistoryAdapter
 import com.sycodes.orbital.models.AppDatabase
 import com.sycodes.orbital.models.History
 import com.sycodes.orbital.utilities.HistoryItem
+import com.sycodes.orbital.utilities.WebDataExtractor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -27,9 +29,18 @@ class HistoryFragment : Fragment() {
     private lateinit var recyclerView: RecyclerView
     private lateinit var adapter: GroupedHistoryAdapter
     private lateinit var appDatabase: AppDatabase
+    private lateinit var backPressedCallback : OnBackPressedCallback
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        backPressedCallback = object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                (activity as MainActivity).closeTabGroup()
+            }
+        }
+
+        requireActivity().onBackPressedDispatcher.addCallback(this, backPressedCallback)
 
     }
 
@@ -50,6 +61,7 @@ class HistoryFragment : Fragment() {
         }, onDeleteClick = { history ->
             CoroutineScope(Dispatchers.IO).launch {
                 appDatabase.appDataDao().deleteHistory(history.id)
+                WebDataExtractor.deleteFaviconFile(history.favicon)
                 loadHistory()
             }
         })

@@ -223,7 +223,7 @@ class BrowserTabFragment : Fragment() {
 
                         val webData = WebDataExtractor.extractWebData(webView, requireContext(), tabId)
                         saveTabData(url, webData.title, webData.faviconPath, webData.previewPath)
-                        saveUrlToHistory(url)
+                        saveUrlToHistoryForWebViewGoBack(url)
                         updateBookmarkIcon(url)
                         saveHistory(url, webData.title, webData.faviconPath)
                     }
@@ -241,7 +241,10 @@ class BrowserTabFragment : Fragment() {
             override fun onReceivedIcon(view: WebView?, icon: Bitmap?) {
                 if (icon != null && isAdded && context != null) {
                     CoroutineScope(Dispatchers.IO).launch {
-                        val faviconPath = WebDataExtractor.saveFaviconToPrivateStorage(icon, requireContext(), tabId)
+                        val faviconPath = WebDataExtractor.saveFaviconToPrivateStorage(
+                            icon, requireContext(), WebDataExtractor.FaviconType.TAB, tabId.toString()
+                        )
+
                         val tab = tabDatabase.tabDataDao().getTab(tabId)
                         tab?.let {
                             val updatedTab = it.copy(favicon = faviconPath)
@@ -277,10 +280,18 @@ class BrowserTabFragment : Fragment() {
 
     fun saveHistory(url: String, title: String, faviconPath: String) {
         CoroutineScope(Dispatchers.IO).launch {
-            val history = History(url = url, title = title, favicon = faviconPath)
+
+            val icon = withContext(Dispatchers.Main) {
+                webView.favicon
+            }
+            val path = icon?.let {
+                WebDataExtractor.saveFaviconForHistory(it, requireContext(), url)
+            } ?: ""
+            val history = History(url = url, title = title, favicon = path)
             AppDatabase.getAppDatabase(requireContext()).appDataDao().insertHistory(history)
         }
     }
+
 
     private fun setUpBottomNavigation() {
         binding.newTabButtonMainActivity.setOnClickListener {
@@ -313,7 +324,11 @@ class BrowserTabFragment : Fragment() {
                     Toast.makeText(requireContext(), "Bookmark removed", Toast.LENGTH_SHORT).show()
                 } else {
                     val webData = withContext(Dispatchers.Main) {
-                        WebDataExtractor.extractWebData(webView, requireContext(), tabId)
+                        val icon = webView.favicon
+                        val faviconPath = icon?.let {
+                            WebDataExtractor.saveFaviconForBookmark(it, requireContext(), url)
+                        } ?: ""
+                        WebDataExtractor.WebData(webView.title ?: "", faviconPath, "")
                     }
 
                     val newBookmark = Bookmark(
@@ -366,7 +381,7 @@ class BrowserTabFragment : Fragment() {
         }
     }
 
-    private fun saveUrlToHistory(url: String) {
+    private fun saveUrlToHistoryForWebViewGoBack(url: String) {
         if (isNavigatingBack) return
         CoroutineScope(Dispatchers.IO).launch {
             if (url == lastSavedUrl) return@launch
@@ -407,7 +422,6 @@ class BrowserTabFragment : Fragment() {
             }
         }
     }
-
 
     fun String.toUrlList(): List<String> {
         return try {

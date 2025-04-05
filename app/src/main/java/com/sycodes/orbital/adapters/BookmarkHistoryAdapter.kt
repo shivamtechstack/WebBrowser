@@ -28,6 +28,8 @@ class BookmarkHistoryAdapter(private var items: List<Bookmark>,
         holder: ViewHolderAdapter,
         position: Int
     ) {
+        if (position >= items.size) return
+
         holder.itemTitle.text = items[position].title
         holder.itemUrl.text = items[position].url
 

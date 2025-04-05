@@ -14,6 +14,7 @@ import com.sycodes.orbital.R
 import com.sycodes.orbital.adapters.TabGroupAdapter
 import com.sycodes.orbital.databinding.FragmentTabGroupBinding
 import com.sycodes.orbital.models.TabDatabase
+import com.sycodes.orbital.utilities.WebDataExtractor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -77,6 +78,7 @@ class TabGroupFragment : Fragment() {
                     onTabCloseListener = { tabToClose ->
                         CoroutineScope(Dispatchers.IO).launch {
                             tabDatabase.tabDataDao().deleteTab(tabToClose.id)
+                            WebDataExtractor.deleteTabData(requireContext(), tabToClose.id)
                             val updatedTabs = tabDatabase.tabDataDao().getAllTabs()
                             withContext(Dispatchers.Main) {
                                 (binding.tabGroupRecyclerView.adapter as? TabGroupAdapter)?.updateTabs(updatedTabs)

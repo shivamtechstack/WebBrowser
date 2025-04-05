@@ -5,7 +5,9 @@
     android:layout_height="wrap_content"
     android:textColor="#888"
     android:textSize="14sp"
-    android:padding="12dp"
+    android:hint="day"
+    android:paddingVertical="8dp"
+    android:paddingHorizontal="15dp"
     android:background="#f5f5f5">
 
 </TextView>

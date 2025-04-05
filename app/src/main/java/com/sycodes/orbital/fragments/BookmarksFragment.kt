@@ -14,6 +14,7 @@ import com.sycodes.orbital.R
 import com.sycodes.orbital.adapters.BookmarkHistoryAdapter
 import com.sycodes.orbital.databinding.FragmentBookmarksBinding
 import com.sycodes.orbital.models.AppDatabase
+import com.sycodes.orbital.utilities.WebDataExtractor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -69,6 +70,7 @@ class BookmarksFragment : Fragment() {
                     onCloseButtonClickListener = { bookmark ->
                         CoroutineScope(Dispatchers.IO).launch {
                             appDatabase.appDataDao().deleteBookmarkByUrl(bookmark)
+                            WebDataExtractor.deleteFaviconFile(bookmark.favicon)
 
                             withContext(Dispatchers.Main) {
                                 val index = bookmarks.indexOf(bookmark)
