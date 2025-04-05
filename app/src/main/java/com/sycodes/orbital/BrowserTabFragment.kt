@@ -24,6 +24,7 @@ import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import com.sycodes.orbital.databinding.FragmentBrowserTabBinding
 import com.sycodes.orbital.fragments.BookmarksFragment
+import com.sycodes.orbital.fragments.HistoryFragment
 import com.sycodes.orbital.fragments.TabGroupFragment
 import com.sycodes.orbital.models.AppDatabase
 import com.sycodes.orbital.models.Bookmark
@@ -135,7 +136,12 @@ class BrowserTabFragment : Fragment() {
                 R.id.toolbar_bookmarks -> {
                     (activity as MainActivity).openTabGroup(BookmarksFragment())
                     true
-                }else -> false
+                }
+                R.id.toolbar_history ->{
+                    (activity as MainActivity).openTabGroup(HistoryFragment())
+                    true
+                }
+                else -> false
             }
         }
 
@@ -306,7 +312,6 @@ class BrowserTabFragment : Fragment() {
                     binding.saveBookmarkButton.setImageResource(R.drawable.bookmark_empty_24)
                     Toast.makeText(requireContext(), "Bookmark removed", Toast.LENGTH_SHORT).show()
                 } else {
-                    // Safely access WebView on main thread
                     val webData = withContext(Dispatchers.Main) {
                         WebDataExtractor.extractWebData(webView, requireContext(), tabId)
                     }
@@ -326,7 +331,6 @@ class BrowserTabFragment : Fragment() {
                 }
             }
         }
-
     }
 
     fun navigateBack(){
@@ -365,7 +369,7 @@ class BrowserTabFragment : Fragment() {
     private fun saveUrlToHistory(url: String) {
         if (isNavigatingBack) return
         CoroutineScope(Dispatchers.IO).launch {
-            if (url == lastSavedUrl) return@launch // prevent duplicate
+            if (url == lastSavedUrl) return@launch
 
             val tab = tabDatabase.tabDataDao().getTab(tabId)
             tab?.let {
@@ -377,7 +381,7 @@ class BrowserTabFragment : Fragment() {
                 val newHistory = historyList.take(currentIndex + 1).toMutableList()
                 newHistory.add(url)
 
-                lastSavedUrl = url // ✅ save for next check
+                lastSavedUrl = url
 
                 val updatedTab = it.copy(
                     historyUrls = newHistory.toJsonString(),
@@ -387,7 +391,6 @@ class BrowserTabFragment : Fragment() {
             }
         }
     }
-
 
     private fun updateBookmarkIcon(url: String) {
         CoroutineScope(Dispatchers.IO).launch {

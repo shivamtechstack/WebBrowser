@@ -12,7 +12,7 @@ import com.sycodes.orbital.R
 import com.sycodes.orbital.models.Bookmark
 import java.io.File
 
-class BookmarkHistoryAdapter(private val items: List<Bookmark>,
+class BookmarkHistoryAdapter(private var items: List<Bookmark>,
                              private val onBookmarkClickListener: (Bookmark) -> Unit,
                              private val onCloseButtonClickListener: (Bookmark) -> Unit)
     :RecyclerView.Adapter<BookmarkHistoryAdapter.ViewHolderAdapter>() {
@@ -42,7 +42,6 @@ class BookmarkHistoryAdapter(private val items: List<Bookmark>,
             onCloseButtonClickListener(items[position])
         }
 
-
     }
 
     override fun getItemCount(): Int {
@@ -54,7 +53,6 @@ class BookmarkHistoryAdapter(private val items: List<Bookmark>,
         var itemTitle = view.findViewById<TextView>(R.id.bookmarks_title)!!
         var itemUrl = view.findViewById<TextView>(R.id.bookmarks_url)!!
         var itemCloseButton = view.findViewById<ImageView>(R.id.bookmarks_close)!!
-
     }
 
     fun loadBitmapFromPath(filePath: String?): Bitmap? {
@@ -65,9 +63,5 @@ class BookmarkHistoryAdapter(private val items: List<Bookmark>,
         } else {
             null
         }
-    }
-
-    fun update(){
-
     }
 }

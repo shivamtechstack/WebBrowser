@@ -17,11 +17,13 @@ import com.sycodes.orbital.models.AppDatabase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class BookmarksFragment : Fragment() {
     private lateinit var binding: FragmentBookmarksBinding
     private lateinit var appDatabase: AppDatabase
     private lateinit var backPressedCallback: OnBackPressedCallback
+    lateinit var adapter: BookmarkHistoryAdapter
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -55,17 +57,31 @@ class BookmarksFragment : Fragment() {
         }
 
         CoroutineScope(Dispatchers.IO).launch {
-            val bookmarks = appDatabase.appDataDao().getAllBookmarks()
-            requireActivity().runOnUiThread {
-                recyclerView.adapter = BookmarkHistoryAdapter(bookmarks,onBookmarkClickListener = {
-                    (activity as MainActivity).addNewTab(it.url)
-                    (activity as MainActivity).closeTabGroup()
-                }, onCloseButtonClickListener = {
-                    CoroutineScope(Dispatchers.IO).launch {
-                        appDatabase.appDataDao().deleteBookmarkByUrl(it)
+            val bookmarks = appDatabase.appDataDao().getAllBookmarks().toMutableList()
+
+            withContext(Dispatchers.Main) {
+                adapter = BookmarkHistoryAdapter(
+                    bookmarks,
+                    onBookmarkClickListener = {
+                        (activity as MainActivity).addNewTab(it.url)
+                        (activity as MainActivity).closeTabGroup()
+                    },
+                    onCloseButtonClickListener = { bookmark ->
+                        CoroutineScope(Dispatchers.IO).launch {
+                            appDatabase.appDataDao().deleteBookmarkByUrl(bookmark)
+
+                            withContext(Dispatchers.Main) {
+                                val index = bookmarks.indexOf(bookmark)
+                                if (index != -1) {
+                                    bookmarks.removeAt(index)
+                                    adapter.notifyItemRemoved(index)
+                                }
+                            }
+                        }
                     }
-                    recyclerView.adapter?.notifyItemChanged(bookmarks.indexOf(it))
-                })
+                )
+
+                recyclerView.adapter = adapter
             }
         }
 
