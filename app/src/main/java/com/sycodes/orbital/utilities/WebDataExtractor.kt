@@ -20,7 +20,7 @@ object WebDataExtractor {
 
     }
 
-    private fun saveFaviconToPrivateStorage(bitmap: Bitmap?, context: Context, tabId: Int): String {
+    fun saveFaviconToPrivateStorage(bitmap: Bitmap?, context: Context, tabId: Int): String {
         if (bitmap == null) return ""
 
         val file = File(context.filesDir, "favicon_$tabId.png")

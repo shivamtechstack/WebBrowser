@@ -23,7 +23,10 @@ import androidx.appcompat.widget.PopupMenu
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import com.sycodes.orbital.databinding.FragmentBrowserTabBinding
+import com.sycodes.orbital.fragments.BookmarksFragment
 import com.sycodes.orbital.fragments.TabGroupFragment
+import com.sycodes.orbital.models.AppDatabase
+import com.sycodes.orbital.models.Bookmark
 import com.sycodes.orbital.models.TabData
 import com.sycodes.orbital.models.TabDatabase
 import com.sycodes.orbital.utilities.WebDataExtractor
@@ -43,6 +46,10 @@ class BrowserTabFragment : Fragment() {
     private val tabDatabase by lazy { TabDatabase.getDatabase(requireContext())}
     private lateinit var backPressedCallback: OnBackPressedCallback
     private var isNavigatingBack = false
+    private lateinit var appDatabase : AppDatabase
+    private var lastSavedUrl: String? = null
+    private var hasInitialLoadHappened = false
+
 
     companion object {
         private const val ARG_URL = "url"
@@ -121,6 +128,16 @@ class BrowserTabFragment : Fragment() {
         popupMenu.menuInflater.inflate(R.menu.toolbarmenu, popupMenu.menu)
 
         popupMenu.setForceShowIcon(true)
+
+        popupMenu.setOnMenuItemClickListener { item ->
+            when (item.itemId) {
+                R.id.toolbar_bookmarks -> {
+                    (activity as MainActivity).openTabGroup(BookmarksFragment())
+                    true
+                }else -> false
+            }
+        }
+
         popupMenu.show()
     }
 
@@ -200,6 +217,7 @@ class BrowserTabFragment : Fragment() {
                         val webData = WebDataExtractor.extractWebData(webView, requireContext(), tabId)
                         saveTabData(url, webData.title, webData.faviconPath, webData.previewPath)
                         saveUrlToHistory(url)
+                        updateBookmarkIcon(url)
                     }
                 }
             }
@@ -210,6 +228,19 @@ class BrowserTabFragment : Fragment() {
                 binding.progressBar.progress = newProgress
                 if (newProgress == 100) binding.progressBar.visibility = View.GONE
                 else binding.progressBar.visibility = View.VISIBLE
+            }
+
+            override fun onReceivedIcon(view: WebView?, icon: Bitmap?) {
+                if (icon != null && isAdded && context != null) {
+                    CoroutineScope(Dispatchers.IO).launch {
+                        val faviconPath = WebDataExtractor.saveFaviconToPrivateStorage(icon, requireContext(), tabId)
+                        val tab = tabDatabase.tabDataDao().getTab(tabId)
+                        tab?.let {
+                            val updatedTab = it.copy(favicon = faviconPath)
+                            tabDatabase.tabDataDao().updateTabData(updatedTab)
+                        }
+                    }
+                }
             }
         }
     }
@@ -242,14 +273,53 @@ class BrowserTabFragment : Fragment() {
         }
 
         binding.tabGroupButton.setOnClickListener {
-            (activity as? MainActivity)?.openTabGroup()
+            (activity as? MainActivity)?.openTabGroup(TabGroupFragment())
         }
 
         binding.webViewGoBack.setOnClickListener {
             navigateBack()
         }
 
+        binding.saveBookmarkButton.setOnClickListener {
+            val url = webView.url ?: return@setOnClickListener
+
+            CoroutineScope(Dispatchers.Main).launch {
+                appDatabase = AppDatabase.getAppDatabase(requireContext())
+
+                val existingBookmark = withContext(Dispatchers.IO) {
+                    appDatabase.appDataDao().getBookmarkByUrl(url)
+                }
+
+                if (existingBookmark != null) {
+                    withContext(Dispatchers.IO) {
+                        appDatabase.appDataDao().deleteBookmarkByUrl(existingBookmark)
+                    }
+                    binding.saveBookmarkButton.setImageResource(R.drawable.bookmark_empty_24)
+                    Toast.makeText(requireContext(), "Bookmark removed", Toast.LENGTH_SHORT).show()
+                } else {
+                    // Safely access WebView on main thread
+                    val webData = withContext(Dispatchers.Main) {
+                        WebDataExtractor.extractWebData(webView, requireContext(), tabId)
+                    }
+
+                    val newBookmark = Bookmark(
+                        url = url,
+                        title = webData.title,
+                        favicon = webData.faviconPath
+                    )
+
+                    withContext(Dispatchers.IO) {
+                        appDatabase.appDataDao().insertBookmark(newBookmark)
+                    }
+
+                    binding.saveBookmarkButton.setImageResource(R.drawable.bookmark_24)
+                    Toast.makeText(requireContext(), "Bookmark saved", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+
     }
+
     fun navigateBack(){
         CoroutineScope(Dispatchers.IO).launch {
             val tab = tabDatabase.tabDataDao().getTab(tabId)
@@ -284,7 +354,10 @@ class BrowserTabFragment : Fragment() {
     }
 
     private fun saveUrlToHistory(url: String) {
+        if (isNavigatingBack) return
         CoroutineScope(Dispatchers.IO).launch {
+            if (url == lastSavedUrl) return@launch // prevent duplicate
+
             val tab = tabDatabase.tabDataDao().getTab(tabId)
             tab?.let {
                 val historyList = it.historyUrls.toUrlList()
@@ -295,6 +368,8 @@ class BrowserTabFragment : Fragment() {
                 val newHistory = historyList.take(currentIndex + 1).toMutableList()
                 newHistory.add(url)
 
+                lastSavedUrl = url // ✅ save for next check
+
                 val updatedTab = it.copy(
                     historyUrls = newHistory.toJsonString(),
                     historyIndex = newHistory.size - 1
@@ -303,6 +378,24 @@ class BrowserTabFragment : Fragment() {
             }
         }
     }
+
+
+    private fun updateBookmarkIcon(url: String) {
+        CoroutineScope(Dispatchers.IO).launch {
+            appDatabase = AppDatabase.getAppDatabase(requireContext())
+            val existingBookmark = appDatabase.appDataDao().getBookmarkByUrl(url)
+
+            withContext(Dispatchers.Main) {
+                val iconRes = if (existingBookmark != null) {
+                    R.drawable.bookmark_24
+                } else {
+                    R.drawable.bookmark_empty_24
+                }
+                binding.saveBookmarkButton.setImageResource(iconRes)
+            }
+        }
+    }
+
 
     fun String.toUrlList(): List<String> {
         return try {

@@ -30,6 +30,7 @@ class BookmarkHistoryAdapter(private val items: List<Bookmark>,
     ) {
         holder.itemTitle.text = items[position].title
         holder.itemUrl.text = items[position].url
+
         val faviconBitmap = loadBitmapFromPath(items[position].favicon)
         holder.itemIcon.setImageBitmap(faviconBitmap)
 
@@ -64,5 +65,9 @@ class BookmarkHistoryAdapter(private val items: List<Bookmark>,
         } else {
             null
         }
+    }
+
+    fun update(){
+
     }
 }

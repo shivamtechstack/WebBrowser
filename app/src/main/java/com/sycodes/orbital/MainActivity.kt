@@ -1,5 +1,6 @@
 package com.sycodes.orbital
 
+import android.app.Fragment
 import android.os.Bundle
 import android.view.View
 import androidx.activity.enableEdgeToEdge
@@ -90,15 +91,16 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    fun openTabGroup() {
+    fun openTabGroup(fragment : androidx.fragment.app.Fragment) {
         binding.viewPager.visibility = View.GONE
         binding.mainFragmentContainer.visibility = View.VISIBLE
 
         supportFragmentManager.beginTransaction()
-            .replace(R.id.main_fragment_container, TabGroupFragment())
+            .replace(R.id.main_fragment_container, fragment)
             .addToBackStack("TabGroup")
             .commit()
     }
+
     fun closeTabGroup() {
         supportFragmentManager.popBackStack()
         binding.viewPager.visibility = View.VISIBLE

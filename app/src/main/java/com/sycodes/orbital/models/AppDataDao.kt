@@ -1,6 +1,7 @@
 package com.sycodes.orbital.models
 
 import androidx.room.Dao
+import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
@@ -27,6 +28,9 @@ interface AppDataDao {
     @Query("SELECT * FROM bookmarks ORDER BY timestamp DESC")
     suspend fun getAllBookmarks(): List<Bookmark>
 
+    @Query("SELECT * FROM bookmarks WHERE url = :url LIMIT 1")
+    suspend fun getBookmarkByUrl(url: String): Bookmark?
+
     @Query("SELECT * FROM downloads ORDER BY timestamp DESC")
     suspend fun getAllDownloads(): List<Download>
 
@@ -38,6 +42,9 @@ interface AppDataDao {
 
     @Query("DELETE FROM bookmarks WHERE id = :id")
     suspend fun deleteBookmark(id: Int)
+
+    @Delete
+    suspend fun deleteBookmarkByUrl(bookmark: Bookmark)
 
     @Query("DELETE FROM downloads WHERE id = :id")
     suspend fun deleteDownload(id: Int)
