@@ -1,6 +1,5 @@
 package com.sycodes.orbital
 
-import android.app.Fragment
 import android.os.Bundle
 import android.view.View
 import androidx.activity.enableEdgeToEdge
@@ -8,7 +7,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
 import com.sycodes.orbital.adapters.TabPagerAdapter
 import com.sycodes.orbital.databinding.ActivityMainBinding
-import com.sycodes.orbital.fragments.TabGroupFragment
 import com.sycodes.orbital.models.TabData
 import com.sycodes.orbital.models.TabDatabase
 import com.sycodes.orbital.viewModels.MainViewModel
@@ -22,6 +20,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tabAdapter: TabPagerAdapter
     private lateinit var tabDatabase: TabDatabase
     private lateinit var viewModel: MainViewModel
+    private var isTabBeingCreated = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -35,51 +34,27 @@ class MainActivity : AppCompatActivity() {
         binding.viewPager.isUserInputEnabled = false
 
         loadInitialTab()
-
-//        viewModel.allTabs.observe(this) { tabs ->
-//            if (tabs.isEmpty()) {
-//                addNewTab()
-//            } else {
-//                tabAdapter.updateTabs(tabs)
-//                val lastActiveTab = tabs.find { it.isActive }
-//                lastActiveTab?.let {
-//                    switchToTab(it.id)
-//                }
-//            }
-//        }
     }
 
     fun loadInitialTab() {
         CoroutineScope(Dispatchers.IO).launch {
-            val tabs = tabDatabase.tabDataDao().getAllTabs() // ✅ Fetch tabs from DB
+            val tabs = tabDatabase.tabDataDao().getAllTabs()
 
             if (tabs.isEmpty()) {
-                // No tabs yet, create a new one
-                withContext(Dispatchers.Main) {
-                    addNewTab()
+                if (!isTabBeingCreated) {
+                    isTabBeingCreated = true
+                    withContext(Dispatchers.Main) {
+                        addNewTab()
+                    }
                 }
             } else {
-                // Tabs exist — update adapter and switch to active
                 val activeTab = tabs.find { it.isActive }
 
                 withContext(Dispatchers.Main) {
-                    tabAdapter.updateTabs(tabs) // ✅ Set all tabs
+                    tabAdapter.updateTabs(tabs)
                     activeTab?.let {
-                        switchToTab(it.id) // ✅ Only switch if active tab exists
+                        switchToTab(it.id)
                     }
-                }
-            }
-        }
-    }
-
-    fun loadActiveTab() {
-        CoroutineScope(Dispatchers.IO).launch {
-            val activeTab = tabDatabase.tabDataDao().getActiveTab()
-            withContext(Dispatchers.Main) {
-                if (activeTab != null) {
-                    tabAdapter.addTab(activeTab)
-                } else {
-                    addNewTab()
                 }
             }
         }
@@ -94,12 +69,13 @@ class MainActivity : AppCompatActivity() {
             withContext(Dispatchers.Main) {
                 val newTabData = TabData(url = url ?: "", id = newTabId, isActive = true)
                 tabAdapter.addTab(newTabData)
-                CoroutineScope(Dispatchers.Main).launch {
-                    switchToTab(newTabId)
-                }
+                switchToTab(newTabId)
+
+                isTabBeingCreated = false
             }
         }
     }
+
 
     fun switchToTab(tabId: Int) {
         CoroutineScope(Dispatchers.IO).launch {
@@ -128,6 +104,19 @@ class MainActivity : AppCompatActivity() {
         supportFragmentManager.popBackStack()
         binding.viewPager.visibility = View.VISIBLE
         binding.mainFragmentContainer.visibility = View.GONE
-        loadInitialTab()
+
+        CoroutineScope(Dispatchers.IO).launch {
+            val tabs = tabDatabase.tabDataDao().getAllTabs()
+            withContext(Dispatchers.Main) {
+                if (tabs.isEmpty()) {
+                    addNewTab()
+                } else {
+                    tabAdapter.updateTabs(tabs)
+                    val activeTab = tabs.find { it.isActive }
+                    activeTab?.let { switchToTab(it.id) }
+                }
+            }
+        }
     }
+
 }

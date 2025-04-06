@@ -1,8 +1,6 @@
 package com.sycodes.orbital
 
-import android.annotation.SuppressLint
 import android.content.Context
-import android.graphics.Bitmap
 import android.os.Bundle
 import android.util.Patterns
 import android.view.KeyEvent
@@ -12,29 +10,26 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
-import android.webkit.WebChromeClient
-import android.webkit.WebResourceRequest
 import android.webkit.WebView
-import android.webkit.WebViewClient
 import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.widget.PopupMenu
-import androidx.lifecycle.Observer
-import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import com.sycodes.orbital.databinding.FragmentBrowserTabBinding
 import com.sycodes.orbital.fragments.BookmarksFragment
 import com.sycodes.orbital.fragments.HistoryFragment
 import com.sycodes.orbital.fragments.TabGroupFragment
+import com.sycodes.orbital.menus.ToolBarPopUpMenu
 import com.sycodes.orbital.models.AppDatabase
 import com.sycodes.orbital.models.Bookmark
 import com.sycodes.orbital.models.History
 import com.sycodes.orbital.models.TabData
 import com.sycodes.orbital.models.TabDatabase
 import com.sycodes.orbital.utilities.WebDataExtractor
+import com.sycodes.orbital.utilities.WebViewConfigurator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -50,7 +45,6 @@ class BrowserTabFragment : Fragment() {
     private var isNavigatingBack = false
     private lateinit var appDatabase : AppDatabase
     private var lastSavedUrl: String? = null
-    private var hasInitialLoadHappened = false
 
 
     companion object {
@@ -110,7 +104,7 @@ class BrowserTabFragment : Fragment() {
         setUpBottomNavigation()
 
         binding.toolbarMenuIcon.setOnClickListener { view ->
-            showPopupMenu(view)
+            ToolBarPopUpMenu.showPopupMenu(this,view)
         }
 
         binding.searchTextEditText.setOnEditorActionListener { v, actionId, event ->
@@ -123,29 +117,6 @@ class BrowserTabFragment : Fragment() {
             }
         }
         return binding.root
-    }
-
-    private fun showPopupMenu(view1: View) {
-        val popupMenu = PopupMenu(requireContext(), view1)
-        popupMenu.menuInflater.inflate(R.menu.toolbarmenu, popupMenu.menu)
-
-        popupMenu.setForceShowIcon(true)
-
-        popupMenu.setOnMenuItemClickListener { item ->
-            when (item.itemId) {
-                R.id.toolbar_bookmarks -> {
-                    (activity as MainActivity).openTabGroup(BookmarksFragment())
-                    true
-                }
-                R.id.toolbar_history ->{
-                    (activity as MainActivity).openTabGroup(HistoryFragment())
-                    true
-                }
-                else -> false
-            }
-        }
-
-        popupMenu.show()
     }
 
     private fun loadUrl(query: String) {
@@ -168,93 +139,28 @@ class BrowserTabFragment : Fragment() {
         imm.hideSoftInputFromWindow(view.windowToken, 0)
     }
 
-    @SuppressLint("SetJavaScriptEnabled")
     private fun setupWebView() {
-        val webSettings = webView.settings
-        webSettings.javaScriptEnabled = true
-        webSettings.domStorageEnabled = true
-        webSettings.loadWithOverviewMode = true
-        webSettings.useWideViewPort = true
-        webSettings.builtInZoomControls = true
-        webSettings.displayZoomControls = false
-        webSettings.databaseEnabled = true
-        webSettings.setSupportMultipleWindows(true)
-        webSettings.allowFileAccess = true
-        webSettings.allowContentAccess = true
-        webSettings.javaScriptCanOpenWindowsAutomatically = true
-
-        webView.webViewClient = object : WebViewClient() {
-            override fun shouldOverrideUrlLoading(
-                view: WebView?,
-                request: WebResourceRequest?
-            ): Boolean {
-                val url = request?.url.toString()
-
-                if (request?.isForMainFrame == false) {
-                    (activity as MainActivity).addNewTab(url)
-                    return true
-                }
-
-                view?.loadUrl(url)
-                return false
-            }
-
-
-        override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
-                if (url.isNullOrBlank()) return
-
-                binding.progressBar.visibility = View.VISIBLE
-                webView.visibility = View.VISIBLE
-                binding.searchTextEditText.setText(url)
-
-            }
-
-            override fun onPageFinished(view: WebView?, url: String?) {
-                binding.progressBar.visibility = View.GONE
-
-                if (url != null) {
-
-                    if (isAdded && context != null) {
-
-                        if (isNavigatingBack) {
-                            isNavigatingBack = false
-                            return
-                        }
-
-                        val webData = WebDataExtractor.extractWebData(webView, requireContext(), tabId)
-                        saveTabData(url, webData.title, webData.faviconPath, webData.previewPath)
-                        saveUrlToHistoryForWebViewGoBack(url)
-                        updateBookmarkIcon(url)
-                        saveHistory(url, webData.title, webData.faviconPath)
-                    }
-                }
-            }
-        }
-
-        webView.webChromeClient = object : WebChromeClient() {
-            override fun onProgressChanged(view: WebView?, newProgress: Int) {
-                binding.progressBar.progress = newProgress
-                if (newProgress == 100) binding.progressBar.visibility = View.GONE
-                else binding.progressBar.visibility = View.VISIBLE
-            }
-
-            override fun onReceivedIcon(view: WebView?, icon: Bitmap?) {
-                if (icon != null && isAdded && context != null) {
-                    CoroutineScope(Dispatchers.IO).launch {
-                        val faviconPath = WebDataExtractor.saveFaviconToPrivateStorage(
-                            icon, requireContext(), WebDataExtractor.FaviconType.TAB, tabId.toString()
-                        )
-
-                        val tab = tabDatabase.tabDataDao().getTab(tabId)
-                        tab?.let {
-                            val updatedTab = it.copy(favicon = faviconPath)
-                            tabDatabase.tabDataDao().updateTabData(updatedTab)
-                        }
-                    }
-                }
-            }
-        }
+        WebViewConfigurator(
+            context = requireContext(),
+            webView = webView,
+            progressBar = progressBar,
+            searchEditText = binding.searchTextEditText,
+            tabId = tabId,
+            onNewTabRequested = { url -> (activity as MainActivity).addNewTab(url) },
+            onSaveTabData = { url, title, faviconPath, previewPath ->
+                saveTabData(url, title, faviconPath, previewPath)
+            },
+            onSaveHistory = { url, title, faviconPath ->
+                saveHistory(url, title, faviconPath)
+            },
+            onUpdateBookmarkIcon = { url -> updateBookmarkIcon(url) },
+            onSaveUrlToHistoryForGoBack = { url -> saveUrlToHistoryForWebViewGoBack(url) },
+            getIsNavigatingBack = { isNavigatingBack },
+            setIsNavigatingBack = { isNavigatingBack = it },
+            lifecycleScope = lifecycleScope
+        ).configure()
     }
+
 
     private fun saveTabData(url: String, title: String, faviconPath: String, previewPath: String) {
         CoroutineScope(Dispatchers.IO).launch {
@@ -280,13 +186,17 @@ class BrowserTabFragment : Fragment() {
 
     fun saveHistory(url: String, title: String, faviconPath: String) {
         CoroutineScope(Dispatchers.IO).launch {
-
             val icon = withContext(Dispatchers.Main) {
+                if (!isAdded) return@withContext null
                 webView.favicon
             }
+
             val path = icon?.let {
+                if (!isAdded) return@launch
                 WebDataExtractor.saveFaviconForHistory(it, requireContext(), url)
             } ?: ""
+
+            if (!isAdded) return@launch
             val history = History(url = url, title = title, favicon = path)
             AppDatabase.getAppDatabase(requireContext()).appDataDao().insertHistory(history)
         }
@@ -348,71 +258,92 @@ class BrowserTabFragment : Fragment() {
         }
     }
 
-    fun navigateBack(){
+    fun navigateBack() {
         CoroutineScope(Dispatchers.IO).launch {
             val tab = tabDatabase.tabDataDao().getTab(tabId)
-            tab?.let {
-                val historyList = it.historyUrls.toUrlList().toMutableList()
-                val currentIndex = it.historyIndex
+            if (tab == null) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(requireContext(), "No tab data found", Toast.LENGTH_SHORT).show()
+                }
+                return@launch
+            }
 
-                if (currentIndex > 0) {
-                    historyList.removeAt(currentIndex)
+            val historyList = tab.historyUrls.toUrlList().toMutableList()
+            val currentIndex = tab.historyIndex
 
-                    val newIndex = currentIndex - 1
-                    val urlToLoad = historyList[newIndex]
+            if (currentIndex <= 0 || currentIndex >= historyList.size) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(requireContext(), "No more history", Toast.LENGTH_SHORT).show()
+                }
+                return@launch
+            }
 
-                    val updatedTab = it.copy(
-                        historyUrls = historyList.toJsonString(),
-                        historyIndex = newIndex
-                    )
-                    tabDatabase.tabDataDao().updateTabData(updatedTab)
+            val newIndex = currentIndex - 1
+            val urlToLoad = historyList[newIndex]
 
-                    isNavigatingBack = true
+            // Save updated state
+            val updatedTab = tab.copy(
+                historyIndex = newIndex
+            )
+            tabDatabase.tabDataDao().updateTabData(updatedTab)
 
-                    withContext(Dispatchers.Main) {
-                        webView.loadUrl(urlToLoad)
-                    }
-                } else {
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(requireContext(), "No more history", Toast.LENGTH_SHORT).show()
-                    }
+            isNavigatingBack = true
+
+            withContext(Dispatchers.Main) {
+                try {
+                    webView.loadUrl(urlToLoad)
+                } catch (e: Exception) {
+                    Toast.makeText(requireContext(), "Failed to load URL", Toast.LENGTH_SHORT).show()
+                    e.printStackTrace()
                 }
             }
         }
     }
 
+
     private fun saveUrlToHistoryForWebViewGoBack(url: String) {
         if (isNavigatingBack) return
+
         CoroutineScope(Dispatchers.IO).launch {
             if (url == lastSavedUrl) return@launch
 
-            val tab = tabDatabase.tabDataDao().getTab(tabId)
-            tab?.let {
-                val historyList = it.historyUrls.toUrlList()
-                val currentIndex = it.historyIndex
+            val tab = tabDatabase.tabDataDao().getTab(tabId) ?: return@launch
+            val historyList = tab.historyUrls.toUrlList().toMutableList()
+            val currentIndex = tab.historyIndex
 
-                if (historyList.getOrNull(currentIndex) == url) return@launch
+            if (historyList.contains(url)) return@launch
 
-                val newHistory = historyList.take(currentIndex + 1).toMutableList()
-                newHistory.add(url)
-
-                lastSavedUrl = url
-
-                val updatedTab = it.copy(
-                    historyUrls = newHistory.toJsonString(),
-                    historyIndex = newHistory.size - 1
-                )
-                tabDatabase.tabDataDao().updateTabData(updatedTab)
+            val updatedHistory = if (currentIndex < historyList.size - 1) {
+                historyList.take(currentIndex + 1).toMutableList()
+            } else {
+                historyList
             }
+
+            if (updatedHistory.lastOrNull() != url) {
+                updatedHistory.add(url)
+            } else {
+                return@launch
+            }
+
+            lastSavedUrl = url
+
+            val updatedTab = tab.copy(
+                historyUrls = updatedHistory.toJsonString(),
+                historyIndex = updatedHistory.size - 1
+            )
+
+            tabDatabase.tabDataDao().updateTabData(updatedTab)
         }
     }
 
     private fun updateBookmarkIcon(url: String) {
         CoroutineScope(Dispatchers.IO).launch {
-            appDatabase = AppDatabase.getAppDatabase(requireContext())
-            val existingBookmark = appDatabase.appDataDao().getBookmarkByUrl(url)
+            if (!isAdded) return@launch
+            val db = AppDatabase.getAppDatabase(requireContext())
+            val existingBookmark = db.appDataDao().getBookmarkByUrl(url)
 
             withContext(Dispatchers.Main) {
+                if (!isAdded) return@withContext
                 val iconRes = if (existingBookmark != null) {
                     R.drawable.bookmark_24
                 } else {
