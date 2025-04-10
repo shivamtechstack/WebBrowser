@@ -8,6 +8,7 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
+import com.bumptech.glide.Glide
 import com.sycodes.orbital.R
 import com.sycodes.orbital.models.Bookmark
 import java.io.File
@@ -33,8 +34,12 @@ class BookmarkHistoryAdapter(private var items: List<Bookmark>,
         holder.itemTitle.text = items[position].title
         holder.itemUrl.text = items[position].url
 
-        val faviconBitmap = loadBitmapFromPath(items[position].favicon)
-        holder.itemIcon.setImageBitmap(faviconBitmap)
+        Glide.with(holder.itemView.context)
+            .load(File(items[position].favicon))
+            .placeholder(R.drawable.letter_b)
+            .error(R.drawable.letter_b)
+            .circleCrop()
+            .into(holder.itemIcon)
 
         holder.itemView.setOnClickListener {
             onBookmarkClickListener(items[position])
@@ -55,15 +60,5 @@ class BookmarkHistoryAdapter(private var items: List<Bookmark>,
         var itemTitle = view.findViewById<TextView>(R.id.bookmarks_title)!!
         var itemUrl = view.findViewById<TextView>(R.id.bookmarks_url)!!
         var itemCloseButton = view.findViewById<ImageView>(R.id.bookmarks_close)!!
-    }
-
-    fun loadBitmapFromPath(filePath: String?): Bitmap? {
-        if (filePath.isNullOrEmpty()) return null
-        val file = File(filePath)
-        return if (file.exists()) {
-            BitmapFactory.decodeFile(file.absolutePath)
-        } else {
-            null
-        }
     }
 }

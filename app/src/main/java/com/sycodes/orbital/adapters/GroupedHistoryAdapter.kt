@@ -8,6 +8,7 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
+import com.bumptech.glide.Glide
 import com.sycodes.orbital.R
 import com.sycodes.orbital.models.History
 import com.sycodes.orbital.utilities.HistoryItem
@@ -72,22 +73,18 @@ class GroupedHistoryAdapter(
         private val delete: ImageView = view.findViewById(R.id.bookmarks_close)
 
         fun bind(history: History) {
-            val faviconBitmap = loadBitmapFromPath(history.favicon)
-            icon.setImageBitmap(faviconBitmap)
+
+            Glide.with(itemView.context)
+                .load(history.favicon)
+                .placeholder(R.drawable.letter_h)
+                .error(R.drawable.letter_h)
+                .circleCrop()
+                .into(icon)
+
             title.text = history.title
             url.text = history.url
             itemView.setOnClickListener { onHistoryClick(history) }
             delete.setOnClickListener { onDeleteClick(history) }
-        }
-    }
-
-    fun loadBitmapFromPath(filePath: String?): Bitmap? {
-        if (filePath.isNullOrEmpty()) return null
-        val file = File(filePath)
-        return if (file.exists()) {
-            BitmapFactory.decodeFile(file.absolutePath)
-        } else {
-            null
         }
     }
 }

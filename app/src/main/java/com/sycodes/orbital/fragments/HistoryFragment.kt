@@ -14,7 +14,7 @@ import com.sycodes.orbital.adapters.GroupedHistoryAdapter
 import com.sycodes.orbital.models.AppDatabase
 import com.sycodes.orbital.models.History
 import com.sycodes.orbital.utilities.HistoryItem
-import com.sycodes.orbital.utilities.WebDataExtractor
+import com.sycodes.orbital.utilities.WebPageMetaExtractor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -60,8 +60,8 @@ class HistoryFragment : Fragment() {
             (activity as MainActivity).closeTabGroup()
         }, onDeleteClick = { history ->
             CoroutineScope(Dispatchers.IO).launch {
+                //WebPageMetaExtractor.deleteHistoryFavicon(requireContext(),history.url)
                 appDatabase.appDataDao().deleteHistory(history.id)
-                WebDataExtractor.deleteFaviconFile(history.favicon)
                 loadHistory()
             }
         })

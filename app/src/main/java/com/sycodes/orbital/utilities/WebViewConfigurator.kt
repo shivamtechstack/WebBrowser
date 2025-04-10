@@ -9,6 +9,7 @@ import android.webkit.*
 import android.widget.EditText
 import android.widget.ProgressBar
 import kotlinx.coroutines.*
+import java.util.UUID
 
 class WebViewConfigurator(
     private val context: Context,
@@ -67,11 +68,14 @@ class WebViewConfigurator(
                         return
                     }
 
-                    val webData = WebDataExtractor.extractWebData(webView, context, tabId)
-                    onSaveTabData(url, webData.title, webData.faviconPath, webData.previewPath)
+                    val title = webView.title ?: ""
+                    val previewPathForTab = WebPageMetaExtractor.capturePreview(webView,context,"$tabId")
+                    //val faviconPathForHistory = WebPageMetaExtractor.extractFavicon(webView.favicon,context,"history_$url")
+
+                    onSaveTabData(url, title, "", previewPathForTab)
                     onSaveUrlToHistoryForGoBack(url)
                     onUpdateBookmarkIcon(url)
-                    onSaveHistory(url, webData.title, webData.faviconPath)
+                    onSaveHistory(url, title,"")
                 }
             }
         }
@@ -83,20 +87,22 @@ class WebViewConfigurator(
             }
 
             override fun onReceivedIcon(view: WebView?, icon: Bitmap?) {
+                super.onReceivedIcon(view, icon)
                 if (icon != null) {
-                    lifecycleScope.launch(Dispatchers.IO) {
-                        val faviconPath = WebDataExtractor.saveFaviconToPrivateStorage(
-                            icon, context, WebDataExtractor.FaviconType.TAB, tabId.toString()
-                        )
-                        val tabDao = TabDatabase.getDatabase(context).tabDataDao()
+                    var faviconPathForTab = WebPageMetaExtractor.extractFavicon(icon,context,"$tabId")
+                    val tabDao = TabDatabase.getDatabase(context).tabDataDao()
+                    CoroutineScope(Dispatchers.IO).launch {
+
                         val tab = tabDao.getTab(tabId)
+
                         tab?.let {
-                            val updatedTab = it.copy(favicon = faviconPath)
+                            val updatedTab = it.copy(favicon = faviconPathForTab)
                             tabDao.updateTabData(updatedTab)
                         }
                     }
                 }
             }
         }
+
     }
 }

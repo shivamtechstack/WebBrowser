@@ -8,13 +8,12 @@ import android.view.ViewGroup
 import androidx.activity.OnBackPressedCallback
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.GridLayoutManager
-import com.sycodes.orbital.BrowserTabFragment
 import com.sycodes.orbital.MainActivity
 import com.sycodes.orbital.R
 import com.sycodes.orbital.adapters.TabGroupAdapter
 import com.sycodes.orbital.databinding.FragmentTabGroupBinding
 import com.sycodes.orbital.models.TabDatabase
-import com.sycodes.orbital.utilities.WebDataExtractor
+import com.sycodes.orbital.utilities.WebPageMetaExtractor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -67,7 +66,6 @@ class TabGroupFragment : Fragment() {
                         withContext(Dispatchers.Main) {
                             activity?.let { safeActivity ->
                                 (safeActivity as? MainActivity)?.apply {
-                                    //loadActiveTab()
                                     switchToTab(selectedTab.id)
                                     closeTabGroup()
                                 }
@@ -77,8 +75,10 @@ class TabGroupFragment : Fragment() {
                 },
                     onTabCloseListener = { tabToClose ->
                         CoroutineScope(Dispatchers.IO).launch {
+                            WebPageMetaExtractor.deleteTabPreview(requireContext(),tabToClose.id)
+                            WebPageMetaExtractor.deleteTabFavicon(requireContext(),tabToClose.id)
                             tabDatabase.tabDataDao().deleteTab(tabToClose.id)
-                            WebDataExtractor.deleteTabData(requireContext(), tabToClose.id)
+
                             val updatedTabs = tabDatabase.tabDataDao().getAllTabs()
                             withContext(Dispatchers.Main) {
                                 (binding.tabGroupRecyclerView.adapter as? TabGroupAdapter)?.updateTabs(updatedTabs)
