@@ -273,8 +273,7 @@ class BrowserTabFragment : Fragment() {
                     WebPageMetaExtractor.deleteTabFavicon(requireContext(),tabId)
                     WebPageMetaExtractor.deleteTabPreview(requireContext(),tabId)
                     tabDatabase.tabDataDao().deleteTab(tabId)
-                    (activity as? MainActivity)?.closeTabGroup()
-
+                    (activity as? MainActivity)?.addNewTab()
                 }
                 return@launch
             }

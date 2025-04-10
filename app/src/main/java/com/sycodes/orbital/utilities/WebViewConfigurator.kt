@@ -70,7 +70,6 @@ class WebViewConfigurator(
 
                     val title = webView.title ?: ""
                     val previewPathForTab = WebPageMetaExtractor.capturePreview(webView,context,"$tabId")
-                    //val faviconPathForHistory = WebPageMetaExtractor.extractFavicon(webView.favicon,context,"history_$url")
 
                     onSaveTabData(url, title, "", previewPathForTab)
                     onSaveUrlToHistoryForGoBack(url)
@@ -103,6 +102,5 @@ class WebViewConfigurator(
                 }
             }
         }
-
     }
 }
