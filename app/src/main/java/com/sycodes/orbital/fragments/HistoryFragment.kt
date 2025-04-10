@@ -60,7 +60,6 @@ class HistoryFragment : Fragment() {
             (activity as MainActivity).closeTabGroup()
         }, onDeleteClick = { history ->
             CoroutineScope(Dispatchers.IO).launch {
-                //WebPageMetaExtractor.deleteHistoryFavicon(requireContext(),history.url)
                 appDatabase.appDataDao().deleteHistory(history.id)
                 loadHistory()
             }

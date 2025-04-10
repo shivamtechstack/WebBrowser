@@ -223,7 +223,6 @@ class BrowserTabFragment : Fragment() {
                     binding.saveBookmarkButton.setImageResource(R.drawable.bookmark_empty_24)
                     Toast.makeText(requireContext(), "Bookmark removed", Toast.LENGTH_SHORT).show()
                 } else {
-                    //var faviconPathForBookmark = WebPageMetaExtractor.extractFavicon(webView.favicon,requireContext(),"bookmark_$url")
 
                     val newBookmark = Bookmark(
                         url = url,
