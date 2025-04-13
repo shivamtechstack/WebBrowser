@@ -19,7 +19,7 @@ interface AppDataDao {
     @Insert
     suspend fun insertDownload(download: Download)
 
-    @Insert
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertShortcut(shortcut: Shortcut)
 
     @Query("SELECT * FROM history ORDER BY timestamp DESC")

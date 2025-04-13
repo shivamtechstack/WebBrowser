@@ -15,6 +15,7 @@ import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.lifecycle.lifecycleScope
+import com.sycodes.orbital.adapters.ShortcutAdapter
 import com.sycodes.orbital.databinding.FragmentBrowserTabBinding
 import com.sycodes.orbital.fragments.TabGroupFragment
 import com.sycodes.orbital.menus.ToolBarPopUpMenu
@@ -24,14 +25,12 @@ import com.sycodes.orbital.models.History
 import com.sycodes.orbital.models.TabData
 import com.sycodes.orbital.models.TabDatabase
 import com.sycodes.orbital.utilities.WebPageMetaExtractor
-import com.sycodes.orbital.utilities.WebViewConfigurator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import java.net.URLEncoder
-import java.util.UUID
 
 class BrowserTabFragment : Fragment() {
     private lateinit var binding: FragmentBrowserTabBinding
@@ -98,13 +97,28 @@ class BrowserTabFragment : Fragment() {
                 binding.searchTextEditText.setText("")
                 binding.homePageLayout.visibility = View.VISIBLE
                 webView.visibility = View.GONE
+
+                CoroutineScope(Dispatchers.IO).launch {
+                    val shortcuts =
+                        AppDatabase.getAppDatabase(requireContext()).appDataDao().getAllShortcuts()
+                    if (shortcuts.isNotEmpty()) {
+
+                        binding.recyclerViewShortcuts.visibility = View.VISIBLE
+                        withContext(Dispatchers.Main) {
+                            binding.recyclerViewShortcuts.adapter = ShortcutAdapter(shortcuts, onShortcutClickListener = {
+                                loadUrl(it.url)
+                            })
+                        }
+
+                    }
+                }
             }
         }
 
         setUpBottomNavigation()
 
         binding.toolbarMenuIcon.setOnClickListener { view ->
-            ToolBarPopUpMenu.showPopupMenu(this,view)
+            ToolBarPopUpMenu.showPopupMenu(this,view, webView)
         }
 
         binding.searchTextEditText.setOnEditorActionListener { v, actionId, event ->

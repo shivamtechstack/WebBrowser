@@ -5,6 +5,7 @@
     android:layout_height="match_parent"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:orientation="vertical"
+    android:background="@drawable/grasshopper"
     tools:context=".BrowserTabFragment">
 
     <LinearLayout
@@ -77,6 +78,7 @@
     <com.google.android.material.progressindicator.LinearProgressIndicator
         android:id="@+id/progressBar"
         android:layout_width="match_parent"
+        android:visibility="gone"
         android:layout_height="wrap_content"/>
 
     <WebView
@@ -90,7 +92,19 @@
         android:id="@+id/homePageLayout"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_weight="1"/>
+        android:orientation="vertical"
+        android:layout_weight="1">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:layout_marginTop="50dp"
+            android:id="@+id/recyclerView_Shortcuts"
+            android:layout_width="match_parent"
+            android:visibility="gone"
+            tools:listitem="@layout/shortcutslayout"
+            android:layout_marginHorizontal="20dp"
+            android:layout_height="200dp"/>
+
+    </LinearLayout>
 
     <LinearLayout
         android:layout_width="match_parent"
