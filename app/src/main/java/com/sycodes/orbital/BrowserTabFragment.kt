@@ -15,6 +15,8 @@ import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.GridLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.sycodes.orbital.adapters.ShortcutAdapter
 import com.sycodes.orbital.databinding.FragmentBrowserTabBinding
 import com.sycodes.orbital.fragments.TabGroupFragment
@@ -25,6 +27,7 @@ import com.sycodes.orbital.models.History
 import com.sycodes.orbital.models.TabData
 import com.sycodes.orbital.models.TabDatabase
 import com.sycodes.orbital.utilities.WebPageMetaExtractor
+import com.sycodes.orbital.utilities.WebViewConfigurator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -103,11 +106,14 @@ class BrowserTabFragment : Fragment() {
                         AppDatabase.getAppDatabase(requireContext()).appDataDao().getAllShortcuts()
                     if (shortcuts.isNotEmpty()) {
 
-                        binding.recyclerViewShortcuts.visibility = View.VISIBLE
+
                         withContext(Dispatchers.Main) {
+                            binding.recyclerViewShortcuts.visibility = View.VISIBLE
                             binding.recyclerViewShortcuts.adapter = ShortcutAdapter(shortcuts, onShortcutClickListener = {
                                 loadUrl(it.url)
                             })
+                            binding.recyclerViewShortcuts.layoutManager = GridLayoutManager(requireContext(),2,
+                                RecyclerView.HORIZONTAL, false)
                         }
 
                     }
