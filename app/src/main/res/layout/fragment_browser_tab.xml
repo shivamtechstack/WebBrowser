@@ -5,20 +5,19 @@
     android:layout_height="match_parent"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:orientation="vertical"
-    android:background="@drawable/grasshopper"
+
     tools:context=".BrowserTabFragment">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:paddingVertical="7dp"
+        android:paddingVertical="4dp"
         android:gravity="center">
-
 
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="0dp"
-                android:layout_marginVertical="4dp"
+                android:layout_marginVertical="2dp"
                 android:layout_height="wrap_content"
                 app:cardCornerRadius="10dp"
                 android:layout_weight="1"
@@ -64,7 +63,6 @@
 
             </com.google.android.material.card.MaterialCardView>
 
-
         <ImageView
             android:id="@+id/toolbar_menu_icon"
             android:layout_width="wrap_content"
@@ -93,6 +91,7 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical"
+        android:background="@drawable/grasshopper"
         android:layout_weight="1">
 
         <androidx.recyclerview.widget.RecyclerView

@@ -29,8 +29,8 @@
 
 
    <item android:id="@+id/toolbar_addToShortcut"
-       android:title="Add to shortcut"
-       android:icon="@drawable/plus_24"/>
+       android:title="Add to homescreen"
+       android:icon="@drawable/tablet_24"/>
 
     <item android:id="@+id/toolbar_settings"
         android:icon="@drawable/settings_24"

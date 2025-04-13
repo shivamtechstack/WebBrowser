@@ -40,7 +40,7 @@ class BrowserTabFragment : Fragment() {
     private lateinit var webView: WebView
     private lateinit var progressBar: ProgressBar
     private var tabId: Int = -1
-    private val tabDatabase by lazy { TabDatabase.getDatabase(requireContext())}
+    private lateinit var tabDatabase: TabDatabase
     private lateinit var backPressedCallback: OnBackPressedCallback
     private var isNavigatingBack = false
     private lateinit var appDatabase : AppDatabase
@@ -71,6 +71,12 @@ class BrowserTabFragment : Fragment() {
         }
 
         requireActivity().onBackPressedDispatcher.addCallback(this, backPressedCallback)
+
+    }
+
+    override fun onAttach(context: Context) {
+        super.onAttach(context)
+            tabDatabase = TabDatabase.getDatabase(context)
 
     }
 
@@ -106,7 +112,6 @@ class BrowserTabFragment : Fragment() {
                         AppDatabase.getAppDatabase(requireContext()).appDataDao().getAllShortcuts()
                     if (shortcuts.isNotEmpty()) {
 
-
                         withContext(Dispatchers.Main) {
                             binding.recyclerViewShortcuts.visibility = View.VISIBLE
                             binding.recyclerViewShortcuts.adapter = ShortcutAdapter(shortcuts, onShortcutClickListener = {
@@ -115,7 +120,6 @@ class BrowserTabFragment : Fragment() {
                             binding.recyclerViewShortcuts.layoutManager = GridLayoutManager(requireContext(),2,
                                 RecyclerView.HORIZONTAL, false)
                         }
-
                     }
                 }
             }
