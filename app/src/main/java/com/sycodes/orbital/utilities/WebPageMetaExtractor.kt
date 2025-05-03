@@ -60,6 +60,10 @@ object WebPageMetaExtractor {
         return safeDeleteFile(File(context.filesDir, "$tabId.png"))
     }
 
+    fun deleteShortcutFavicon(context: Context, name : String) : Boolean{
+        return safeDeleteFile(File(context.filesDir, "${name}.png"))
+    }
+
     fun deleteHistoryFavicon(context: Context, name: String): Boolean {
         return safeDeleteFile(File(context.filesDir, "favicon_history_$name.png"))
     }

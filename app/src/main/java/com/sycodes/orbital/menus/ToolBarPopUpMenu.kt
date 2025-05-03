@@ -1,9 +1,11 @@
 package com.sycodes.orbital.menus
 
+import android.content.Intent
 import android.view.MenuItem
 import android.view.View
 import android.webkit.WebView
 import androidx.appcompat.widget.PopupMenu
+import androidx.core.content.ContextCompat.startActivity
 import androidx.fragment.app.Fragment
 import com.sycodes.orbital.MainActivity
 import com.sycodes.orbital.R
@@ -11,6 +13,7 @@ import com.sycodes.orbital.fragments.BookmarksFragment
 import com.sycodes.orbital.fragments.HistoryFragment
 import com.sycodes.orbital.models.AppDatabase
 import com.sycodes.orbital.models.Shortcut
+import com.sycodes.orbital.settings.SettingsActivity
 import com.sycodes.orbital.utilities.WebPageMetaExtractor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -50,6 +53,10 @@ object ToolBarPopUpMenu {
                 R.id.toolbar_newTab -> {
                     (fragment.activity as? MainActivity)?.addNewTab()
                     true
+                }
+                R.id.toolbar_settings -> {
+                    val intent = Intent(context, SettingsActivity::class.java)
+                    startActivity(context, intent, null)
                     true
                 }
                 else -> false
